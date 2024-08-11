@@ -5,30 +5,44 @@
     box-sizing: border-box;
 }
 
+/* Body and container styles */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     color: #333;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: flex-start;
     min-height: 100vh;
+    padding: 20px;
 }
 
-h1 {
-    font-size: 2em;
-    margin-bottom: 20px;
+/* Flex container for two columns */
+.container {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px; /* Optional, limits the width of the container */
 }
 
-div {
+/* Column styles */
+.column {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
     text-align: center;
+    flex: 1;
+    min-width: 300px;
 }
 
+/* Header styles */
+h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+/* Input and button styles */
 input[type="text"] {
     width: 200px;
     padding: 10px;
@@ -56,11 +70,18 @@ button:hover {
     background-color: #0056b3;
 }
 
-#timeDisplay {
-    font-size: 2em;
-    margin-top: 20px;
+/* Button container styles */
+.button-container {
+    margin-bottom: 20px; /* Adjusted spacing */
 }
 
+/* Time Display styles */
+#timeDisplay {
+    font-size: 2em;
+    margin-bottom: 30px; /* Space between the timer and time entries section */
+}
+
+/* List styles */
 ul {
     list-style-type: none;
     padding: 0;
@@ -72,12 +93,47 @@ li {
     background-color: #f8f8f8;
     border: 1px solid #ddd;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* Align items to be spaced out */
     align-items: center;
+    position: relative;
 }
 
 li button {
     margin-left: 10px;
+}
+
+/* Ensure project list items and their buttons are aligned properly */
+#projectList li {
+    cursor: pointer; /* Changes the cursor to a pointer when hovering over list items */
+}
+
+/* Time entry specific styles */
+#timeEntryList li {
+    margin-bottom: 15px; /* Space between each list item */
+    padding: 10px; /* Optional padding */
+    border-bottom: 1px solid #ddd; /* Optional bottom border */
+    display: flex; /* Use Flexbox for layout */
+    align-items: center; /* Center items vertically */
+    position: relative; /* Ensure positioning for child elements */
+}
+
+/* Styles for delete button */
+.remove-time-entry-button {
+    background-color: red; /* Red background color */
+    color: white; /* White text color */
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer; /* Pointer cursor for clicking */
+    font-weight: bold;
+    font-size: 16px;
+    margin-left: 10px; /* Space between the entry text and the button */
+    position: absolute; /* Position the button absolutely within the li */
+    right: 10px; /* Fixed position from the right */
+}
+
+.remove-time-entry-button:hover {
+    background-color: darkred; /* Darker red on hover */
 }
 
 /* Red button styles */

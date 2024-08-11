@@ -1,24 +1,75 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Column: Project Management -->
+        <div class="column">
+            <h1>TiTo Time Tracker</h1>
+            <div class="section">
+                <input type="text" id="newProjectName" placeholder="Enter new project name">
+                <button id="addProjectButton">Add Project</button>
+            </div>
+
+            <div class="section">
+                <h2>Projects</h2>
+                <ul id="projectList">
+                    <!-- Project list items will be inserted here -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right Column: Time Tracking & Entries -->
+        <div class="column">
+            <div class="section">
+                <h2>Current Project: <span id="currentProjectName">None</span></h2>
+                <div class="button-container">
+                    <button id="startButton">Start</button>
+                    <button id="stopButton">Stop</button>
+                    <button id="pauseResumeButton">Pause</button>
+                </div>
+                <div id="timeDisplay">00:00:00</div>
+            </div>
+
+            <!-- Add Time Entry Section -->
+            <!-- Time Entry Form -->
+            <form id="timeEntryForm" style="display: none;">
+                <!-- Time Entry Fields -->
+                <label for="startYear">Start Year:</label>
+                <select id="startYear"></select>
+                <!-- Add similar fields for month, day, hour, minute -->
+                <button type="button" id="saveTimeEntryButton">Save Entry</button>
+            </form>
+
+            <div class="section">
+                <h2>Time Entries</h2>
+                <ul id="timeEntryList">
+                    <!-- Time entry list items will be inserted here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+    <button id="clearDatabaseButton" style="position: fixed; bottom: 20px; right: 20px; background-color: red; color: white; padding: 10px; border: none; cursor: pointer;">
+        Clear Database
+    </button>
+    <script>
     // Global Variables
     let db;
-    let currentProject = null;
-    let startTime;
-    let elapsedTime = 0;
-    let timerInterval;
-    let isPaused = false;
-    let isRunning = false;
-
-    // Initialize IndexedDB
-    window.onload = function() {
+    let dbReady = new Promise((resolve, reject) => {
         let request = indexedDB.open('TimeTrackerDB', 1);
 
         request.onerror = function(event) {
-            console.log('Error opening IndexedDB', event);
+            reject('Error opening IndexedDB:', event);
         };
 
         request.onsuccess = function(event) {
             db = event.target.result;
-            loadProjects();
+            resolve();
         };
 
         request.onupgradeneeded = function(event) {
@@ -29,285 +80,381 @@
             let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
             timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
         };
+    });
 
-        // Attach event listener for the Clear Database button
-        document.getElementById('clearDatabaseButton').addEventListener('click', clearDatabaseConfirmation);
+    let currentProject = null;
+    let startTime;
+    let elapsedTime = 0;
+    let timerInterval;
+    let isPaused = false;
+    let isRunning = false;
 
-        // Attach event listeners for timer buttons
-        document.getElementById('startButton').addEventListener('click', startTimerConfirmation);
-        document.getElementById('stopButton').addEventListener('click', stopTimer);
-        document.getElementById('pauseResumeButton').addEventListener('click', togglePauseResume);
-    };
+    document.addEventListener('DOMContentLoaded', function() {
+        const addProjectButton = document.getElementById('addProjectButton');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const pauseResumeButton = document.getElementById('pauseResumeButton');
+        const saveTimeEntryButton = document.getElementById('saveTimeEntryButton');
 
-    // Clear Database with Confirmation
-    function clearDatabaseConfirmation() {
-        const userConfirmed = confirm('Are you sure you want to clear the database? This action cannot be undone.');
-
-        if (userConfirmed) {
-            clearDatabase();
+        if (addProjectButton) {
+            addProjectButton.addEventListener('click', addProject);
         }
-    }
+        if (startButton) {
+            startButton.addEventListener('click', startTimerConfirmation);
+        }
+        if (stopButton) {
+            stopButton.addEventListener('click', stopTimer);
+        }
+        if (pauseResumeButton) {
+            pauseResumeButton.addEventListener('click', togglePauseResume);
+        }
+        if (saveTimeEntryButton) {
+            saveTimeEntryButton.addEventListener('click', saveTimeEntry);
+        }
 
-    // Clear Database
+        document.getElementById('clearDatabaseButton').addEventListener('click', clearDatabase);
+        document.getElementById('newProjectName').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent the default form submission if applicable
+                addProject(); // Call the addProject function
+            }
+        });
+        loadProjects();
+        loadTimeEntries();
+        populateDropdowns();
+    });
+
     function clearDatabase() {
-        const request = indexedDB.deleteDatabase('TimeTrackerDB');
+        if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects', 'timeEntries'], 'readwrite');
+                let projectStore = transaction.objectStore('projects');
+                projectStore.clear().onsuccess = function() {
+                    console.log('Projects cleared');
+                    loadProjects(); // Update UI after clearing
+                };
+                let timeEntryStore = transaction.objectStore('timeEntries');
+                timeEntryStore.clear().onsuccess = function() {
+                    console.log('Time entries cleared');
+                    location.reload();
+                };
 
-        request.onsuccess = function(event) {
-            console.log('Database deleted successfully');
-            alert('Database has been cleared.');
-            location.reload(); // Reload the page to reflect changes
-        };
-
-        request.onerror = function(event) {
-            console.log('Error deleting database:', event);
-            alert('Error clearing database. Please try again.');
-        };
-
-        request.onblocked = function(event) {
-            console.log('Database deletion blocked:', event);
-        };
-    }
-
-    // Save Time Entry
-    function saveTimeEntry() {
-        const timeSpentInSeconds = Math.floor(elapsedTime / 1000); // Whole seconds
-        const startDate = startTime.toLocaleDateString();
-        const startClockTime = startTime.toLocaleTimeString();
-
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-
-        store.add({
-            projectId: currentProject.id,
-            timeSpent: timeSpentInSeconds,
-            startDate: startDate,
-            startClockTime: startClockTime
-        }).onsuccess = loadTimeEntries;
-    }
-
-    // Add Project
-    function addProject() {
-        const projectName = document.getElementById('newProjectName').value;
-        if (projectName) {
-            let transaction = db.transaction(['projects'], 'readwrite');
-            let store = transaction.objectStore('projects');
-            let request = store.add({ name: projectName });
-
-            request.onsuccess = function() {
-                document.getElementById('newProjectName').value = '';
-                loadProjects();
-            };
-
-            request.onerror = function(event) {
-                console.log('Error adding project', event);
-            };
+                transaction.onerror = function(event) {
+                    console.error('Error clearing database:', event.target.errorCode);
+                };
+            }).catch(error => {
+                console.error('Error clearing database:', error);
+            });
         }
     }
 
-    // Load Projects
-    function loadProjects() {
-        let transaction = db.transaction(['projects'], 'readonly');
-        let store = transaction.objectStore('projects');
-        let request = store.getAll();
-
-        request.onsuccess = function(event) {
-            const projects = event.target.result;
-            renderProjectList(projects);
-        };
+    function populateDropdowns() {
+        // Populate dropdowns with options (year, month, day, etc.)
     }
 
-    // Render Project List
+    function addProject() {
+        dbReady.then(() => {
+            const projectName = document.getElementById('newProjectName').value;
+            if (projectName) {
+                let transaction = db.transaction(['projects'], 'readwrite');
+                let store = transaction.objectStore('projects');
+                let request = store.add({ name: projectName });
+
+                request.onsuccess = function() {
+                    document.getElementById('newProjectName').value = '';
+                    loadProjects();
+                };
+
+                request.onerror = function(event) {
+                    console.error('Error adding project:', event);
+                };
+            } else {
+                console.error('Project name is empty');
+            }
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
+
+    function loadProjects() {
+        dbReady.then(() => {
+            let transaction = db.transaction(['projects'], 'readonly');
+            let store = transaction.objectStore('projects');
+            let request = store.getAll();
+
+            request.onsuccess = function(event) {
+                const projects = event.target.result;
+                renderProjectList(projects);
+                if (projects.length === 1) {
+                    setCurrentProject(projects[0]);
+                }
+            };
+        });
+    }
+
     function renderProjectList(projects) {
         const projectListElement = document.getElementById('projectList');
         projectListElement.innerHTML = '';
 
-        projects.forEach((project) => {
-            const li = document.createElement('li');
-            li.textContent = project.name;
-            li.onclick = () => selectProject(project);
-
-            const editButton = document.createElement('button');
-            editButton.textContent = 'Edit';
-            editButton.onclick = (e) => {
-                e.stopPropagation();
-                editProject(project.id);
-            };
-
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'Delete';
-            deleteButton.onclick = (e) => {
-                e.stopPropagation();
-                deleteProject(project.id);
-            };
-
-            li.appendChild(editButton);
-            li.appendChild(deleteButton);
-            projectListElement.appendChild(li);
+        projects.forEach(project => {
+            const listItem = document.createElement('li');
+            listItem.textContent = project.name;
+            listItem.addEventListener('click', function() {
+                setCurrentProject(project);
+            });
+            projectListElement.appendChild(listItem);
         });
     }
 
-    // Select Project
-    function selectProject(project) {
+    function setCurrentProject(project) {
         currentProject = project;
-        document.getElementById('projectName').value = currentProject.name;
-        loadTimeEntries();
+        document.getElementById('currentProjectName').textContent = project.name;
+        loadTimeEntries(); // Load time entries when the current project is set
     }
 
-    // Edit Project
-    function editProject(projectId) {
-        const newProjectName = prompt('Edit project name:');
-        if (newProjectName) {
-            let transaction = db.transaction(['projects'], 'readwrite');
-            let store = transaction.objectStore('projects');
-            let request = store.get(projectId);
-
-            request.onsuccess = function(event) {
-                let project = event.target.result;
-                project.name = newProjectName;
-                store.put(project);
-                loadProjects();
-            };
-        }
-    }
-
-    // Delete Project
-    function deleteProject(projectId) {
-        let transaction = db.transaction(['projects'], 'readwrite');
-        let store = transaction.objectStore('projects');
-        store.delete(projectId).onsuccess = loadProjects;
-    }
-
-    // Confirm Starting a Timer
     function startTimerConfirmation() {
-        if (isRunning) {
-            if (confirm('A timer is already running. Do you want to reset it?')) {
-                stopTimer(); // Stop the current timer
-                startTimer(); // Start a new timer
-            }
+        if (currentProject) {
+            startTimer();
         } else {
-            startTimer(); // Start the timer if none is running
+            alert("Please select a project first.");
         }
     }
 
-    // Start Timer
     function startTimer() {
-        if (!currentProject) {
-            alert('Please select a project first.');
+        if (isRunning) {
+            alert("Timer is already running.");
+            return;
+        }
+
+        isRunning = true;
+        isPaused = false;
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(updateTimeDisplay, 1000);
+    }
+
+    function updateTimeDisplay() {
+        if (isPaused || !isRunning) return;
+
+        elapsedTime = Date.now() - startTime;
+        const timeDisplay = document.getElementById('timeDisplay');
+        const hours = Math.floor(elapsedTime / 3600000);
+        const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+        const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+        timeDisplay.textContent = 
+            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function togglePauseResume() {
+        if (!isRunning) {
+            alert("No timer is currently running.");
             return;
         }
 
         if (isPaused) {
-            startTime = new Date() - elapsedTime;
             isPaused = false;
-            updatePauseResumeButtonText();
+            startTime = Date.now() - elapsedTime;
+            timerInterval = setInterval(updateTimeDisplay, 1000);
         } else {
-            startTime = new Date();
+            isPaused = true;
+            clearInterval(timerInterval);
         }
-
-        timerInterval = setInterval(updateTimeDisplay, 1000);
-        updatePauseResumeButtonText();
-        isRunning = true; // Timer is now running
-        document.getElementById('startButton').disabled = true; // Disable the start button
     }
 
-    // Stop Timer
-    function stopTimer() {
-        if (!currentProject) {
-            alert('Please select a project first.');
-            return;
-        }
-
+function stopTimer() {
+    if (isRunning) {
         clearInterval(timerInterval);
-
-        // Calculate the total elapsed time in seconds
-        if (!isPaused) {
-            elapsedTime += new Date() - startTime;
-        }
-
+        isRunning = false;
+        isPaused = false;
+        
         // Save the time entry
         saveTimeEntry();
+        
+        // Reset timer and UI
+        resetTimer();
+        
+        // Reload the time entries list for the current project
+        loadTimeEntries();
+    } else {
+        alert("No timer is currently running.");
+    }
+}
 
-        // Reset everything
+    function resetTimer() {
         elapsedTime = 0;
-        isPaused = false;
-        updatePauseResumeButtonText();
+        startTime = null; // Ensure startTime is reset
         document.getElementById('timeDisplay').textContent = '00:00:00';
-        isRunning = false; // Timer is stopped
-        document.getElementById('startButton').disabled = false; // Enable the start button
+        document.getElementById('currentProjectName').textContent = 'None';
+        currentProject = null; // Optionally clear the current project
     }
 
-    // Toggle Pause/Resume
-    function togglePauseResume() {
-        if (!currentProject) {
-            alert('Please select a project first.');
-            return;
-        }
-        if (isPaused) {
-            startTime = new Date() - elapsedTime;
-            timerInterval = setInterval(updateTimeDisplay, 1000);
-            isPaused = false;
-        } else {
-            clearInterval(timerInterval);
-            elapsedTime = new Date() - startTime;
-            isPaused = true;
-        }
-        updatePauseResumeButtonText();
-    }
+function loadTimeEntries() {
+    if (!currentProject) return;
 
-    // Update Time Display
-    function updateTimeDisplay() {
-        const elapsed = new Date() - startTime + elapsedTime;
-        const seconds = Math.floor((elapsed / 1000) % 60);
-        const minutes = Math.floor((elapsed / (1000 * 60)) % 60);
-        const hours = Math.floor((elapsed / (1000 * 60 * 60)) % 24);
-        const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-
-        const formattedTime = `${days > 0 ? days + 'd ' : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-        document.getElementById('timeDisplay').textContent = formattedTime;
-    }
-
-    // Pad Time Values
-    function pad(value) {
-        return value < 10 ? '0' + value : value;
-    }
-
-    // Update Pause/Resume Button Text
-    function updatePauseResumeButtonText() {
-        const button = document.getElementById('pauseResumeButton');
-        button.textContent = isPaused ? 'Resume' : 'Pause';
-    }
-
-    // Load Time Entries for Selected Project
-    function loadTimeEntries() {
-        if (!currentProject) return;
-
+    dbReady.then(() => {
         let transaction = db.transaction(['timeEntries'], 'readonly');
         let store = transaction.objectStore('timeEntries');
         let index = store.index('projectId');
-        let request = index.getAll(IDBKeyRange.only(currentProject.id));
+        let request = index.getAll(currentProject.id);
 
         request.onsuccess = function(event) {
             const timeEntries = event.target.result;
             renderTimeEntryList(timeEntries);
         };
-    }
 
-    // Render Time Entry List
-    function renderTimeEntryList(timeEntries) {
-        const timeEntryListElement = document.getElementById('timeEntryList');
-        timeEntryListElement.innerHTML = '';
+        request.onerror = function(event) {
+            console.error('Error loading time entries:', event);
+        };
+    }).catch(error => {
+        console.error('Database error:', error);
+    });
+}
 
-        timeEntries.forEach((entry) => {
-            const li = document.createElement('li');
-            const seconds = entry.timeSpent % 60;
-            const minutes = Math.floor((entry.timeSpent / 60) % 60);
-            const hours = Math.floor((entry.timeSpent / (60 * 60)) % 24);
-            const days = Math.floor(entry.timeSpent / (60 * 60 * 24));
+function renderTimeEntryList(timeEntries) {
+    const timeEntryListElement = document.getElementById('timeEntryList');
+    timeEntryListElement.innerHTML = '';
 
-            const formattedTimeSpent = `${days > 0 ? days + 'd ' : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-            li.textContent = `Start Date: ${entry.startDate}, Start Time: ${entry.startClockTime}, Time Spent: ${formattedTimeSpent}`;
-            timeEntryListElement.appendChild(li);
+    timeEntries.forEach(entry => {
+        const listItem = document.createElement('li');
+
+        // Create the text content for the time entry
+        const textContent = document.createElement('span');
+        textContent.textContent = `Start: ${new Date(entry.start).toLocaleString()} - End: ${new Date(entry.end).toLocaleString()} (Duration: ${formatDuration(entry.duration)})`;
+        listItem.appendChild(textContent);
+
+        // Create the remove button
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'X';
+        removeButton.className = 'remove-time-entry-button'; // Use the updated CSS class
+
+        // Add event listener to remove button
+        removeButton.addEventListener('click', function() {
+            removeTimeEntry(entry.id);
         });
+
+        listItem.appendChild(removeButton);
+        timeEntryListElement.appendChild(listItem);
+    });
+}
+
+
+
+function formatDuration(duration) {
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function saveTimeEntry() {
+    dbReady.then(() => {
+        if (currentProject) {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+
+            let entry;
+            if (elapsedTime > 0) { // Handle case when timer is stopped
+                let startDateTime = new Date(startTime);
+                let endDateTime = new Date();
+                entry = {
+                    projectId: currentProject.id,
+                    start: startDateTime.toISOString(),
+                    end: endDateTime.toISOString(),
+                    duration: elapsedTime
+                };
+            } else {
+                // Handle manual entry case if form is visible
+                const timeEntryForm = document.getElementById('timeEntryForm');
+                if (timeEntryForm.style.display === 'block') {
+                    const startYearElement = document.getElementById('startYear');
+                    const startMonthElement = document.getElementById('startMonth');
+                    const startDayElement = document.getElementById('startDay');
+                    const startHourElement = document.getElementById('startHour');
+                    const startMinuteElement = document.getElementById('startMinute');
+
+                    if (startYearElement && startMonthElement && startDayElement && startHourElement && startMinuteElement) {
+                        let startDate = new Date(
+                            startYearElement.value,
+                            startMonthElement.value - 1,
+                            startDayElement.value,
+                            startHourElement.value,
+                            startMinuteElement.value
+                        );
+                        let endDate = new Date(
+                            document.getElementById('endYear').value,
+                            document.getElementById('endMonth').value - 1,
+                            document.getElementById('endDay').value,
+                            document.getElementById('endHour').value,
+                            document.getElementById('endMinute').value
+                        );
+
+                        entry = {
+                            projectId: currentProject.id,
+                            start: startDate.toISOString(),
+                            end: endDate.toISOString(),
+                            duration: endDate - startDate
+                        };
+                    } else {
+                        console.error('Form elements for manual entry are missing.');
+                        alert('Please complete the time entry form.');
+                        return;
+                    }
+                } else {
+                    console.error('No timer running and no manual entry.');
+                    alert('Please start a timer or enter time manually.');
+                    return;
+                }
+            }
+
+            let request = store.add(entry);
+
+            request.onsuccess = function() {
+                resetTimer();
+                loadProjects();
+                document.getElementById('timeEntryForm').style.display = 'none'; // Hide the form after saving
+            };
+
+            request.onerror = function(event) {
+                console.log('Error saving time entry', event);
+            };
+        } else {
+            alert('Please select a project first.');
+        }
+    }).catch(error => {
+        console.error('Database error:', error);
+    });
+}
+
+    function showTimeEntryForm() {
+        document.getElementById('timeEntryForm').style.display = 'block';
     }
-</script>
+
+    function resetTimer() {
+        elapsedTime = 0;
+        document.getElementById('timeDisplay').textContent = '00:00:00';
+        document.getElementById('currentProjectName').textContent = 'None';
+    }
+
+function removeTimeEntry(id) {
+    dbReady.then(() => {
+        let transaction = db.transaction(['timeEntries'], 'readwrite');
+        let store = transaction.objectStore('timeEntries');
+        let request = store.delete(id);
+
+        request.onsuccess = function() {
+            console.log('Time entry removed');
+            loadTimeEntries(); // Reload the time entries after removal
+        };
+
+        request.onerror = function(event) {
+            console.error('Error removing time entry:', event);
+        };
+    }).catch(error => {
+        console.error('Database error:', error);
+    });
+}
+
+    </script>
+</body>
+</html>
 

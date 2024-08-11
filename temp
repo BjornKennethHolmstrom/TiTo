@@ -1,0 +1,10 @@
+## was placed after the link to stylesheet
+
+    <style>
+        html, body {
+            height: 100%;
+        }
+    </style>
+
+
+(please only show the code snippet necessary, not the full script)
