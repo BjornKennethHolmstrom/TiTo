@@ -130,6 +130,11 @@ li button {
     cursor: pointer; /* Changes the cursor to a pointer when hovering over list items */
 }
 
+#projectList li.selected {
+    background-color: #e6f2ff; /* Light blue background */
+    font-weight: bold;
+    border-left: 4px solid #007bff; /* Blue left border */
+}
 
 #clearDatabaseButton.red-button {
     background-color: #7B0323 !important; /* Wine red */

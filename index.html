@@ -371,10 +371,11 @@ function renderTimeEntryList(timeEntries) {
         listItem.appendChild(totalTimeSpan);
         listItem.appendChild(descriptionInput);
 
-        // Create the remove button
+        // Create the remove button with trash can emoji
         const removeButton = document.createElement('button');
-        removeButton.textContent = 'X';
+        removeButton.textContent = '🗑️';
         removeButton.className = 'remove-time-entry-button';
+        removeButton.title = 'Delete entry';
         removeButton.addEventListener('click', (event) => {
             event.stopPropagation();
             removeTimeEntry(entry.id);
