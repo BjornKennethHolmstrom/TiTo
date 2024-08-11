@@ -39,7 +39,7 @@
 
         <!-- Right Column: Time Entries -->
         <div class="column">
-            <div class="section">
+            <div class="section time-entries-section">
                 <h2>Time Entries</h2>
                 <button id="addManualEntryButton">Add Manual Entry</button>
                 <ul id="timeEntryList">
@@ -146,15 +146,21 @@
             if (projectName) {
                 let transaction = db.transaction(['projects'], 'readwrite');
                 let store = transaction.objectStore('projects');
-                let request = store.add({ name: projectName });
+                
+                // Get the current highest order
+                let countRequest = store.count();
+                countRequest.onsuccess = function() {
+                    let newOrder = countRequest.result; // This will be the new highest order
+                    let request = store.add({ name: projectName, order: newOrder });
 
-                request.onsuccess = function() {
-                    document.getElementById('newProjectName').value = '';
-                    loadProjects();
-                };
+                    request.onsuccess = function() {
+                        document.getElementById('newProjectName').value = '';
+                        loadProjects();
+                    };
 
-                request.onerror = function(event) {
-                    console.error('Error adding project:', event);
+                    request.onerror = function(event) {
+                        console.error('Error adding project:', event);
+                    };
                 };
             } else {
                 console.error('Project name is empty');
@@ -163,29 +169,28 @@
             console.error('Database error:', error);
         });
     }
+    function loadProjects() {
+        dbReady.then(() => {
+            let transaction = db.transaction(['projects'], 'readonly');
+            let store = transaction.objectStore('projects');
+            let request = store.getAll();
 
-function loadProjects() {
-    dbReady.then(() => {
-        let transaction = db.transaction(['projects'], 'readonly');
-        let store = transaction.objectStore('projects');
-        let request = store.getAll();
+            request.onsuccess = function(event) {
+                const projects = event.target.result;
+                console.log('Loaded projects:', projects);  // Add this line
+                renderProjectList(projects);
+                if (projects.length === 1) {
+                    setCurrentProject(projects[0]);
+                }
+            };
 
-        request.onsuccess = function(event) {
-            const projects = event.target.result;
-            console.log('Loaded projects:', projects);  // Add this line
-            renderProjectList(projects);
-            if (projects.length === 1) {
-                setCurrentProject(projects[0]);
-            }
-        };
-
-        request.onerror = function(event) {  // Add this error handler
-            console.error('Error loading projects:', event);
-        };
-    }).catch(error => {
-        console.error('Database error in loadProjects:', error);
-    });
-}
+            request.onerror = function(event) {  // Add this error handler
+                console.error('Error loading projects:', event);
+            };
+        }).catch(error => {
+            console.error('Database error in loadProjects:', error);
+        });
+    }
 
     function renderProjectList(projects) {
         console.log('Rendering projects:', projects);
@@ -196,9 +201,10 @@ function loadProjects() {
         }
         projectListElement.innerHTML = '';
 
-        projects.forEach(project => {
+        projects.forEach((project, index) => {
             const listItem = document.createElement('li');
             listItem.dataset.projectId = project.id;
+            listItem.draggable = true;
 
             const projectName = document.createElement('span');
             projectName.textContent = project.name;
@@ -219,6 +225,12 @@ function loadProjects() {
             listItem.appendChild(projectName);
             listItem.appendChild(deleteButton);
             projectListElement.appendChild(listItem);
+
+            // Add drag and drop event listeners
+            listItem.addEventListener('dragstart', handleDragStart);
+            listItem.addEventListener('dragover', handleDragOver);
+            listItem.addEventListener('drop', handleDrop);
+            listItem.addEventListener('dragend', handleDragEnd);
         });
 
         // Highlight the current project if one is selected
@@ -229,6 +241,128 @@ function loadProjects() {
             }
         }
     }
+
+    let dragSrcEl = null;
+
+    function handleDragStart(e) {
+        this.style.opacity = '0.4';
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (dragSrcEl != this) {
+            // Get the project IDs
+            const draggedProjectId = dragSrcEl.dataset.projectId;
+            const targetProjectId = this.dataset.projectId;
+
+            // Swap the HTML contents
+            const tempHTML = dragSrcEl.innerHTML;
+            dragSrcEl.innerHTML = this.innerHTML;
+            this.innerHTML = tempHTML;
+
+            // Swap the data-project-id attributes
+            dragSrcEl.dataset.projectId = targetProjectId;
+            this.dataset.projectId = draggedProjectId;
+
+            // If the current project was involved in the swap, update it
+            if (currentProject && (currentProject.id == draggedProjectId || currentProject.id == targetProjectId)) {
+                const updatedProjectElement = document.querySelector(`#projectList li[data-project-id="${currentProject.id}"]`);
+                if (updatedProjectElement) {
+                    setCurrentProject({
+                        id: currentProject.id,
+                        name: updatedProjectElement.querySelector('.project-name').textContent
+                    });
+                }
+            }
+
+            // Reattach event listeners
+            [dragSrcEl, this].forEach(item => {
+                const projectName = item.querySelector('.project-name');
+                const deleteButton = item.querySelector('.remove-project-button');
+            
+                // Remove existing listeners to prevent duplicates
+                projectName.replaceWith(projectName.cloneNode(true));
+                deleteButton.replaceWith(deleteButton.cloneNode(true));
+            
+                // Add new listeners
+                item.querySelector('.project-name').addEventListener('click', function() {
+                    setCurrentProject({
+                        id: parseInt(item.dataset.projectId),
+                        name: this.textContent
+                    });
+                });
+            
+                item.querySelector('.remove-project-button').addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    deleteProject(parseInt(item.dataset.projectId));
+                });
+            });
+        
+            updateProjectOrder();
+        }
+    
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        this.style.opacity = '1';
+        document.querySelectorAll('#projectList li').forEach(function (item) {
+            item.classList.remove('over');
+        });
+    }
+    
+    function updateProjectOrder() {
+        const projectItems = document.querySelectorAll('#projectList li');
+        const newOrder = Array.from(projectItems).map(item => item.dataset.projectId);
+        
+        console.log('New project order:', newOrder);
+        
+        dbReady.then(() => {
+            let transaction = db.transaction(['projects'], 'readwrite');
+            let store = transaction.objectStore('projects');
+
+            // First, retrieve all projects
+            store.getAll().onsuccess = function(event) {
+                let projects = event.target.result;
+                
+                // Sort projects based on the new order
+                projects.sort((a, b) => {
+                    return newOrder.indexOf(a.id.toString()) - newOrder.indexOf(b.id.toString());
+                });
+
+                // Update each project with its new order
+                projects.forEach((project, index) => {
+                    project.order = index;
+                    store.put(project);
+                });
+            };
+
+            transaction.oncomplete = function() {
+                console.log('Project order updated in database');
+            };
+
+            transaction.onerror = function(event) {
+                console.error('Error updating project order:', event.target.error);
+            };
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
+    
 
     function deleteProject(projectId) {
         if (confirm('Are you sure you want to delete this project? All associated time entries will also be deleted.')) {
@@ -280,6 +414,7 @@ function loadProjects() {
         }
     }
     
+    // We also need to modify the loadProjects function to respect the order
     function loadProjects() {
         dbReady.then(() => {
             let transaction = db.transaction(['projects'], 'readonly');
@@ -287,7 +422,9 @@ function loadProjects() {
             let request = store.getAll();
 
             request.onsuccess = function(event) {
-                const projects = event.target.result;
+                let projects = event.target.result;
+                // Sort projects by their order before rendering
+                projects.sort((a, b) => (a.order || 0) - (b.order || 0));
                 console.log('Loaded projects:', projects);
                 renderProjectList(projects);
                 if (projects.length === 0) {
@@ -304,7 +441,7 @@ function loadProjects() {
         }).catch(error => {
             console.error('Database error in loadProjects:', error);
         });
-    }    
+    }
 
     function setCurrentProject(project) {
         currentProject = project;
@@ -319,6 +456,7 @@ function loadProjects() {
             selectedItem.classList.add('selected');
         }
 
+        console.log('Current project set to:', project);
         loadTimeEntries();
     }
 
@@ -376,6 +514,8 @@ function loadProjects() {
             saveTimeEntry(startTime, stopTime);
             resetTimer();
             loadTimeEntries();
+            // Scroll to bottom after stopping the timer
+            scrollToBottom(document.getElementById('timeEntryList'));
         } else {
             alert("No timer is currently running.");
         }
@@ -411,274 +551,283 @@ function loadProjects() {
         updatePlayPauseButton();
     }
 
-function formatDuration(duration) {
-    const hours = Math.floor(duration / 3600000);
-    const minutes = Math.floor((duration % 3600000) / 60000);
-    const seconds = Math.floor((duration % 60000) / 1000);
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function loadTimeEntries() {
-    if (!currentProject) {
-        console.log('No current project, not loading time entries');
-        return;
+    function formatDuration(duration) {
+        const hours = Math.floor(duration / 3600000);
+        const minutes = Math.floor((duration % 3600000) / 60000);
+        const seconds = Math.floor((duration % 60000) / 1000);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
-    console.log('Loading time entries for project:', currentProject);
+    function loadTimeEntries() {
+        if (!currentProject) {
+            console.log('No current project, not loading time entries');
+            return;
+        }
 
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readonly');
-        let store = transaction.objectStore('timeEntries');
-        let index = store.index('projectId');
-        let request = index.getAll(currentProject.id);
+        console.log('Loading time entries for project:', currentProject);
 
-        request.onsuccess = function(event) {
-            const timeEntries = event.target.result;
-            console.log('Loaded time entries:', timeEntries);
-            renderTimeEntryList(timeEntries);
-        };
-
-        request.onerror = function(event) {
-            console.error('Error loading time entries:', event);
-        };
-    }).catch(error => {
-        console.error('Database error in loadTimeEntries:', error);
-    });
-}
-
-function renderTimeEntryList(timeEntries) {
-    const timeEntryListElement = document.getElementById('timeEntryList');
-    timeEntryListElement.innerHTML = '';
-
-    timeEntries.forEach(entry => {
-        const listItem = document.createElement('li');
-        
-        // Create dropdowns for start time
-        const startDropdowns = createDateTimeDropdowns(new Date(entry.start), 'start');
-        
-        // Create dropdowns for end time
-        const endDropdowns = createDateTimeDropdowns(new Date(entry.end), 'end');
-        
-        // Create span for total time
-        const totalTimeSpan = document.createElement('span');
-        totalTimeSpan.className = 'total-time';
-        totalTimeSpan.textContent = formatDuration(entry.duration);
-
-        // Create input field for description
-        const descriptionInput = document.createElement('input');
-        descriptionInput.type = 'text';
-        descriptionInput.className = 'description-input';
-        descriptionInput.value = entry.description || '';
-        descriptionInput.placeholder = 'Enter task description';
-
-        // Append all elements
-        listItem.appendChild(document.createTextNode('Start: '));
-        startDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
-        listItem.appendChild(document.createTextNode(' End: '));
-        endDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
-        listItem.appendChild(document.createTextNode(' Total: '));
-        listItem.appendChild(totalTimeSpan);
-        listItem.appendChild(descriptionInput);
-
-        // Create the remove button with trash can emoji
-        const removeButton = document.createElement('button');
-        removeButton.textContent = '🗑️';
-        removeButton.className = 'remove-time-entry-button';
-        removeButton.title = 'Delete entry';
-        removeButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            removeTimeEntry(entry.id);
-        });
-
-        listItem.appendChild(removeButton);
-        timeEntryListElement.appendChild(listItem);
-
-        // Add event listeners to dropdowns and description input
-        [...startDropdowns, ...endDropdowns].forEach(dropdown => {
-            dropdown.addEventListener('change', () => updateTimeEntry(entry.id, listItem));
-        });
-
-        descriptionInput.addEventListener('input', () => updateTimeEntryDescription(entry.id, descriptionInput.value));
-    });
-}
-
-function createDateTimeDropdowns(date, prefix) {
-    const year = createDropdown(range(2020, 2030), date.getFullYear(), `${prefix}-year`);
-    const month = createDropdown(range(1, 13), date.getMonth() + 1, `${prefix}-month`);
-    const day = createDropdown(range(1, 32), date.getDate(), `${prefix}-day`);
-    const hour = createDropdown(range(0, 24), date.getHours(), `${prefix}-hour`);
-    const minute = createDropdown(range(0, 60), date.getMinutes(), `${prefix}-minute`);
-
-    return [year, month, day, hour, minute];
-}
-
-function createDropdown(options, selectedValue, name) {
-    const select = document.createElement('select');
-    select.name = name;
-    options.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option;
-        optionElement.textContent = option.toString().padStart(2, '0');
-        if (option === selectedValue) optionElement.selected = true;
-        select.appendChild(optionElement);
-    });
-    return select;
-}
-
-function range(start, end) {
-    return Array.from({length: end - start}, (_, i) => start + i);
-}
-
-function updateTimeEntry(id, listItem) {
-    const startDate = getDateFromDropdowns(listItem, 'start');
-    const endDate = getDateFromDropdowns(listItem, 'end');
-    const duration = endDate - startDate;
-
-    // Update total time display
-    const totalTimeSpan = listItem.querySelector('.total-time');
-    totalTimeSpan.textContent = formatDuration(duration);
-
-    // Update database
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-        let request = store.get(id);
-
-        request.onsuccess = function(event) {
-            let entry = event.target.result;
-            entry.start = startDate.toISOString();
-            entry.end = endDate.toISOString();
-            entry.duration = duration;
-
-            store.put(entry).onsuccess = function() {
-                console.log('Time entry updated successfully');
-            };
-        };
-    });
-}
-
-function updateTimeEntryDescription(id, description) {
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-        let request = store.get(id);
-
-        request.onsuccess = function(event) {
-            let entry = event.target.result;
-            entry.description = description;
-
-            store.put(entry).onsuccess = function() {
-                console.log('Time entry description updated successfully');
-            };
-        };
-    }).catch(error => {
-        console.error('Database error:', error);
-    });
-}
-
-function getDateFromDropdowns(listItem, prefix) {
-    const year = listItem.querySelector(`[name="${prefix}-year"]`).value;
-    const month = listItem.querySelector(`[name="${prefix}-month"]`).value - 1;
-    const day = listItem.querySelector(`[name="${prefix}-day"]`).value;
-    const hour = listItem.querySelector(`[name="${prefix}-hour"]`).value;
-    const minute = listItem.querySelector(`[name="${prefix}-minute"]`).value;
-
-    return new Date(year, month, day, hour, minute);
-}
-
-function saveTimeEntry(startTime, endTime) {
-    dbReady.then(() => {
-        if (currentProject) {
-            let transaction = db.transaction(['timeEntries'], 'readwrite');
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readonly');
             let store = transaction.objectStore('timeEntries');
+            let index = store.index('projectId');
+            let request = index.getAll(currentProject.id);
 
-            let entry = {
-                projectId: currentProject.id,
-                start: new Date(startTime).toISOString(),
-                end: new Date(endTime).toISOString(),
-                duration: endTime - startTime,
-                description: ''
-            };
-
-            console.log('Saving time entry:',entry);
-            console.log('Start:', new Date(startTime));
-            console.log('End:', new Date(endTime));
-            console.log('Duration:', formatDuration(entry.duration));
-            console.log('Elapsed time (ms):', entry.duration);
-
-            let request = store.add(entry);
-
-            request.onsuccess = function() {
-                console.log('Time entry saved successfully');
-                loadTimeEntries(); // Refresh time entries for the current project
+            request.onsuccess = function(event) {
+                const timeEntries = event.target.result;
+                console.log('Loaded time entries:', timeEntries);
+                renderTimeEntryList(timeEntries);
             };
 
             request.onerror = function(event) {
-                console.error('Error saving time entry:', event);
+                console.error('Error loading time entries:', event);
             };
-        } else {
-            console.error('No project selected.');
-            alert('Please select a project first.');
-        }
-    }).catch(error => {
-        console.error('Database error:', error);
-    });
-}
-
-function removeTimeEntry(id) {
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-        let request = store.delete(id);
-
-        request.onsuccess = function() {
-            console.log('Time entry removed');
-            loadTimeEntries(); // Reload the time entries after removal
-        };
-
-        request.onerror = function(event) {
-            console.error('Error removing time entry:', event);
-        };
-    }).catch(error => {
-        console.error('Database error:', error);
-    });
-}
-
-function addManualEntry() {
-    if (!currentProject) {
-        alert('Please select a project first.');
-        return;
+        }).catch(error => {
+            console.error('Database error in loadTimeEntries:', error);
+        });
     }
 
-    const now = new Date();
-    const entry = {
-        projectId: currentProject.id,
-        start: now.toISOString(),
-        end: now.toISOString(),
-        duration: 0,
-        description: ''
-    };
+    function renderTimeEntryList(timeEntries) {
+        const timeEntryListElement = document.getElementById('timeEntryList');
+        timeEntryListElement.innerHTML = '';
 
-    console.log('Adding manual entry:', entry);
+        timeEntries.forEach(entry => {
+            const listItem = document.createElement('li');
+        
+            // Create dropdowns for start time
+            const startDropdowns = createDateTimeDropdowns(new Date(entry.start), 'start');
+        
+            // Create dropdowns for end time
+            const endDropdowns = createDateTimeDropdowns(new Date(entry.end), 'end');
+        
+            // Create span for total time
+            const totalTimeSpan = document.createElement('span');
+            totalTimeSpan.className = 'total-time';
+            totalTimeSpan.textContent = formatDuration(entry.duration);
 
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
+            // Create input field for description
+            const descriptionInput = document.createElement('input');
+            descriptionInput.type = 'text';
+            descriptionInput.className = 'description-input';
+            descriptionInput.value = entry.description || '';
+            descriptionInput.placeholder = 'Enter task description';
 
-        let request = store.add(entry);
+            // Append all elements
+            listItem.appendChild(document.createTextNode('Start: '));
+            startDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
+            listItem.appendChild(document.createTextNode(' End: '));
+            endDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
+            listItem.appendChild(document.createTextNode(' Total: '));
+            listItem.appendChild(totalTimeSpan);
+            listItem.appendChild(descriptionInput);
 
-        request.onsuccess = function(event) {
-            console.log('Manual time entry added successfully');
-            loadTimeEntries(); // Refresh time entries for the current project
+            // Create the remove button with trash can emoji
+            const removeButton = document.createElement('button');
+            removeButton.textContent = '🗑️';
+            removeButton.className = 'remove-time-entry-button';
+            removeButton.title = 'Delete entry';
+            removeButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+                removeTimeEntry(entry.id);
+            });
+
+            listItem.appendChild(removeButton);
+            timeEntryListElement.appendChild(listItem);
+
+            // Add event listeners to dropdowns and description input
+            [...startDropdowns, ...endDropdowns].forEach(dropdown => {
+                dropdown.addEventListener('change', () => updateTimeEntry(entry.id, listItem));
+            });
+
+            descriptionInput.addEventListener('input', () => updateTimeEntryDescription(entry.id, descriptionInput.value));
+        });
+    
+        // Scroll to the bottom of the list
+        scrollToBottom(timeEntryListElement);
+    }
+
+    function scrollToBottom(element) {
+        element.scrollTop = element.scrollHeight;
+    }
+    
+    function createDateTimeDropdowns(date, prefix) {
+        const year = createDropdown(range(2020, 2030), date.getFullYear(), `${prefix}-year`);
+        const month = createDropdown(range(1, 13), date.getMonth() + 1, `${prefix}-month`);
+        const day = createDropdown(range(1, 32), date.getDate(), `${prefix}-day`);
+        const hour = createDropdown(range(0, 24), date.getHours(), `${prefix}-hour`);
+        const minute = createDropdown(range(0, 60), date.getMinutes(), `${prefix}-minute`);
+
+        return [year, month, day, hour, minute];
+    }
+
+    function createDropdown(options, selectedValue, name) {
+        const select = document.createElement('select');
+        select.name = name;
+        options.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option;
+            optionElement.textContent = option.toString().padStart(2, '0');
+            if (option === selectedValue) optionElement.selected = true;
+            select.appendChild(optionElement);
+        });
+        return select;
+    }
+
+    function range(start, end) {
+        return Array.from({length: end - start}, (_, i) => start + i);
+    }
+
+    function updateTimeEntry(id, listItem) {
+        const startDate = getDateFromDropdowns(listItem, 'start');
+        const endDate = getDateFromDropdowns(listItem, 'end');
+        const duration = endDate - startDate;
+
+        // Update total time display
+        const totalTimeSpan = listItem.querySelector('.total-time');
+        totalTimeSpan.textContent = formatDuration(duration);
+
+        // Update database
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+            let request = store.get(id);
+
+            request.onsuccess = function(event) {
+                let entry = event.target.result;
+                entry.start = startDate.toISOString();
+                entry.end = endDate.toISOString();
+                entry.duration = duration;
+
+                store.put(entry).onsuccess = function() {
+                    console.log('Time entry updated successfully');
+                };
+            };
+        });
+    }
+
+    function updateTimeEntryDescription(id, description) {
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+            let request = store.get(id);
+
+            request.onsuccess = function(event) {
+                let entry = event.target.result;
+                entry.description = description;
+
+                store.put(entry).onsuccess = function() {
+                    console.log('Time entry description updated successfully');
+                };
+            };
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
+
+    function getDateFromDropdowns(listItem, prefix) {
+        const year = listItem.querySelector(`[name="${prefix}-year"]`).value;
+        const month = listItem.querySelector(`[name="${prefix}-month"]`).value - 1;
+        const day = listItem.querySelector(`[name="${prefix}-day"]`).value;
+        const hour = listItem.querySelector(`[name="${prefix}-hour"]`).value;
+        const minute = listItem.querySelector(`[name="${prefix}-minute"]`).value;
+
+        return new Date(year, month, day, hour, minute);
+    }
+
+    function saveTimeEntry(startTime, endTime) {
+        dbReady.then(() => {
+            if (currentProject) {
+                let transaction = db.transaction(['timeEntries'], 'readwrite');
+                let store = transaction.objectStore('timeEntries');
+
+                let entry = {
+                    projectId: currentProject.id,
+                    start: new Date(startTime).toISOString(),
+                    end: new Date(endTime).toISOString(),
+                    duration: endTime - startTime,
+                    description: ''
+                };
+
+                console.log('Saving time entry:',entry);
+                console.log('Start:', new Date(startTime));
+                console.log('End:', new Date(endTime));
+                console.log('Duration:', formatDuration(entry.duration));
+                console.log('Elapsed time (ms):', entry.duration);
+
+                let request = store.add(entry);
+
+                request.onsuccess = function() {
+                    console.log('Time entry saved successfully');
+                    loadTimeEntries(); // Refresh time entries for the current project
+                };
+
+                request.onerror = function(event) {
+                    console.error('Error saving time entry:', event);
+                };
+            } else {
+                console.error('No project selected.');
+                alert('Please select a project first.');
+            }
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
+
+    function removeTimeEntry(id) {
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+            let request = store.delete(id);
+
+            request.onsuccess = function() {
+                console.log('Time entry removed');
+                loadTimeEntries(); // Reload the time entries after removal
+            };
+
+            request.onerror = function(event) {
+                console.error('Error removing time entry:', event);
+            };
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
+
+    function addManualEntry() {
+        if (!currentProject) {
+            alert('Please select a project first.');
+            return;
+        }
+
+        const now = new Date();
+        const entry = {
+            projectId: currentProject.id,
+            start: now.toISOString(),
+            end: now.toISOString(),
+            duration: 0,
+            description: ''
         };
 
-        request.onerror = function(event) {
-            console.error('Error adding manual time entry:', event);
-        };
-    }).catch(error => {
-        console.error('Database error:', error);
-    });
-}
+        console.log('Adding manual entry:', entry);
+
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+
+            let request = store.add(entry);
+
+            request.onsuccess = function(event) {
+                console.log('Manual time entry added successfully');
+                loadTimeEntries();
+                // Scroll to bottom after adding a manual entry
+                scrollToBottom(document.getElementById('timeEntryList'));
+            };
+
+            request.onerror = function(event) {
+                console.error('Error adding manual time entry:', event);
+            };
+        }).catch(error => {
+            console.error('Database error:', error);
+        });
+    }
 
     </script>
 </body>

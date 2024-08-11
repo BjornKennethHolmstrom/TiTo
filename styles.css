@@ -33,8 +33,9 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    /* Adjust the width as needed */
-    width: 100%; /* Example: Increase from default width */
+    width: 100%;
+    max-height: calc(100vh - 40px); /* Subtract padding from viewport height */
+    overflow: hidden; /* Hide overflow */
 }
 
 /* Adjust the width of columns */
@@ -47,9 +48,10 @@ body {
 }
 
 .section {
-    margin-bottom: 30px; /* Adds space between all sections */
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
 }
-
 /* Styles for the timer section */
 .timer-section {
     display: flex;
@@ -166,12 +168,25 @@ li button {
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
+    transition: transform 0.2s ease;
 }
 
 #projectList li.selected {
     background-color: #e6f2ff;
     font-weight: bold;
     border-left: 4px solid #007bff;
+}
+
+#projectList li:hover {
+    background-color: #f0f0f0;
+}
+
+#projectList li.over {
+    border-top: 2px solid #000;
+}
+
+#projectList li.dragging {
+    opacity: 0.4;
 }
 
 .project-name {
@@ -214,11 +229,41 @@ li button {
     background-color: #410111 !important; /* Even darker when pressed */
 }
 
-#timeEntryList {
-    position: relative;
-    margin-right: 40px; /* Space for the buttons */
+.time-entries-section {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
+/* Update the timeEntryList styles */
+#timeEntryList {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-right: -10px;
+    max-height: calc(100% - 100px); /* Adjust based on other elements' heights */
+}
+
+/* Style the scrollbar for webkit browsers */
+#timeEntryList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#timeEntryList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#timeEntryList::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#timeEntryList::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Update the timeEntryList li styles */
 #timeEntryList li {
     margin-bottom: 15px;
     padding: 10px;
@@ -227,9 +272,9 @@ li button {
     display: flex;
     align-items: center;
     position: relative;
-    justify-content: flex-start; /* Align items to the start */
-    flex-wrap: wrap; /* Allow items to wrap */
-    padding-right: 50px; /* Make room for the remove button */
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-right: 50px;
 }
 
 .description-input {
@@ -260,6 +305,8 @@ li button {
 .remove-time-entry-button:hover {
     transform: translateY(-50%) scale(1.2);
 }
+
+
 
 /* Add this new rule to contain the text */
 .time-entry-text {
