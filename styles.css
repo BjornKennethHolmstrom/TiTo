@@ -125,6 +125,19 @@ li button {
     display: flex;
     align-items: center;
     position: relative;
+    justify-content: flex-start; /* Align items to the start */
+    flex-wrap: wrap; /* Allow items to wrap */
+    padding-right: 50px; /* Make room for the remove button */
+}
+
+.description-input {
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    flex-grow: 1;
+    min-width: 150px; /* Ensure a minimum width */
 }
 
 .remove-time-entry-button {
@@ -137,7 +150,7 @@ li button {
     font-weight: bold;
     font-size: 14px;
     position: absolute;
-    right: -40px; /* Position the button outside the li */
+    right: 5px; /* Adjust position */
     top: 50%;
     transform: translateY(-50%);
     z-index: 1; /* Ensure the button is above other elements */
@@ -166,6 +179,24 @@ li button {
 
 .red-button:active {
     background-color: #a93226; /* Even darker red when pressed */
+}
+
+#addManualEntryButton {
+    margin-bottom: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#addManualEntryButton:hover {
+    background-color: #45a049;
 }
 
 /* Position button at the bottom right */
