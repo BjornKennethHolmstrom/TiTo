@@ -107,11 +107,34 @@ button:hover {
     background-color: #0056b3;
 }
 
-/* Button container styles */
 .button-container {
-    margin-bottom: 20px; /* Adjusted spacing */
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
+#playPauseButton, #stopButton {
+    font-size: 24px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+#playPauseButton:hover, #stopButton:hover {
+    background-color: #e0e0e0;
+}
+
+#playPauseButton:active, #stopButton:active {
+    background-color: #d0d0d0;
+}
 /* List styles */
 ul {
     list-style-type: none;

@@ -156,21 +156,41 @@ li button {
     margin-left: 10px;
 }
 
-/* Ensure project list and time entry list take up available space */
-#projectList, #timeEntryList {
-    overflow-y: auto;
-    max-height: calc(100vh - 250px); /* Adjust based on your needs */
-}
-
-/* Ensure project list items and their buttons are aligned properly */
 #projectList li {
-    cursor: pointer; /* Changes the cursor to a pointer when hovering over list items */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 #projectList li.selected {
-    background-color: #e6f2ff; /* Light blue background */
+    background-color: #e6f2ff;
     font-weight: bold;
-    border-left: 4px solid #007bff; /* Blue left border */
+    border-left: 4px solid #007bff;
+}
+
+.project-name {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.remove-project-button {
+    background-color: transparent;
+    color: #333;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: transform 0.2s ease;
+}
+
+.remove-project-button:hover {
+    transform: scale(1.2);
 }
 
 #clearDatabaseButton.red-button {

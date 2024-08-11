@@ -321,6 +321,13 @@ function loadProjects() {
         updatePlayPauseButton();
     }
 
+function formatDuration(duration) {
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function loadTimeEntries() {
     if (!currentProject) {
         console.log('No current project, not loading time entries');
@@ -487,13 +494,6 @@ function getDateFromDropdowns(listItem, prefix) {
     const minute = listItem.querySelector(`[name="${prefix}-minute"]`).value;
 
     return new Date(year, month, day, hour, minute);
-}
-
-function formatDuration(duration) {
-    const hours = Math.floor(duration / 3600000);
-    const minutes = Math.floor((duration % 3600000) / 60000);
-    const seconds = Math.floor((duration % 60000) / 1000);
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function saveTimeEntry(startTime, endTime) {
