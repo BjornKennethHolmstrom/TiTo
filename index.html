@@ -243,9 +243,6 @@ function stopTimer() {
         isRunning = false;
         isPaused = false;
         
-        // Ensure elapsedTime is updated
-        updateTimeDisplay(); // Update elapsedTime based on the latest display
-        
         // Save the time entry
         saveTimeEntry();
         
@@ -292,29 +289,107 @@ function renderTimeEntryList(timeEntries) {
 
     timeEntries.forEach(entry => {
         const listItem = document.createElement('li');
+        
+        // Create dropdowns for start time
+        const startDropdowns = createDateTimeDropdowns(new Date(entry.start), 'start');
+        
+        // Create dropdowns for end time
+        const endDropdowns = createDateTimeDropdowns(new Date(entry.end), 'end');
+        
+        // Create span for total time
+        const totalTimeSpan = document.createElement('span');
+        totalTimeSpan.className = 'total-time';
+        totalTimeSpan.textContent = formatDuration(entry.duration);
 
-        // Create the text content for the time entry
-        const textContent = document.createElement('span');
-        textContent.className = 'time-entry-text';
-        textContent.textContent = `Start: ${new Date(entry.start).toLocaleString()} - End: ${new Date(entry.end).toLocaleString()} (Duration: ${formatDuration(entry.duration)})`;
-        listItem.appendChild(textContent);
+        // Append all elements
+        listItem.appendChild(document.createTextNode('Start: '));
+        startDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
+        listItem.appendChild(document.createTextNode(' End: '));
+        endDropdowns.forEach(dropdown => listItem.appendChild(dropdown));
+        listItem.appendChild(document.createTextNode(' Total: '));
+        listItem.appendChild(totalTimeSpan);
 
         // Create the remove button
         const removeButton = document.createElement('button');
         removeButton.textContent = 'X';
         removeButton.className = 'remove-time-entry-button';
-
-        // Add event listener to remove button
-        removeButton.addEventListener('click', function(event) {
-            event.stopPropagation(); // Prevent event from bubbling up
+        removeButton.addEventListener('click', (event) => {
+            event.stopPropagation();
             removeTimeEntry(entry.id);
         });
 
         listItem.appendChild(removeButton);
         timeEntryListElement.appendChild(listItem);
+
+        // Add event listeners to dropdowns
+        [...startDropdowns, ...endDropdowns].forEach(dropdown => {
+            dropdown.addEventListener('change', () => updateTimeEntry(entry.id, listItem));
+        });
     });
 }
 
+function createDateTimeDropdowns(date, prefix) {
+    const year = createDropdown(range(2020, 2030), date.getFullYear(), `${prefix}-year`);
+    const month = createDropdown(range(1, 13), date.getMonth() + 1, `${prefix}-month`);
+    const day = createDropdown(range(1, 32), date.getDate(), `${prefix}-day`);
+    const hour = createDropdown(range(0, 24), date.getHours(), `${prefix}-hour`);
+    const minute = createDropdown(range(0, 60), date.getMinutes(), `${prefix}-minute`);
+
+    return [year, month, day, hour, minute];
+}
+
+function createDropdown(options, selectedValue, name) {
+    const select = document.createElement('select');
+    select.name = name;
+    options.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option;
+        optionElement.textContent = option.toString().padStart(2, '0');
+        if (option === selectedValue) optionElement.selected = true;
+        select.appendChild(optionElement);
+    });
+    return select;
+}
+
+function range(start, end) {
+    return Array.from({length: end - start}, (_, i) => start + i);
+}
+
+function updateTimeEntry(id, listItem) {
+    const startDate = getDateFromDropdowns(listItem, 'start');
+    const endDate = getDateFromDropdowns(listItem, 'end');
+    const duration = endDate - startDate;
+
+    // Update total time display
+    const totalTimeSpan = listItem.querySelector('.total-time');
+    totalTimeSpan.textContent = formatDuration(duration);
+
+    // Update database
+    dbReady.then(() => {
+        let transaction = db.transaction(['timeEntries'], 'readwrite');
+        let store = transaction.objectStore('timeEntries');
+        let request = store.get(id);
+
+        request.onsuccess = function(event) {
+            let entry = event.target.result;
+            entry.start = startDate.toISOString();
+            entry.end = endDate.toISOString();
+            entry.duration = duration;
+
+            store.put(entry);
+        };
+    });
+}
+
+function getDateFromDropdowns(listItem, prefix) {
+    const year = listItem.querySelector(`[name="${prefix}-year"]`).value;
+    const month = listItem.querySelector(`[name="${prefix}-month"]`).value - 1;
+    const day = listItem.querySelector(`[name="${prefix}-day"]`).value;
+    const hour = listItem.querySelector(`[name="${prefix}-hour"]`).value;
+    const minute = listItem.querySelector(`[name="${prefix}-minute"]`).value;
+
+    return new Date(year, month, day, hour, minute);
+}
 
 function formatDuration(duration) {
     const hours = Math.floor(duration / 3600000);
