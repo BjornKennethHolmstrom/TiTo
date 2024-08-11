@@ -35,17 +35,6 @@
                 </div>
                 <div id="timeDisplay">00:00:00</div>
             </div>
-
-            <!-- Add Time Entry Section -->
-            <!-- Time Entry Form -->
-            <form id="timeEntryForm" style="display: none;">
-                <!-- Time Entry Fields -->
-                <label for="startYear">Start Year:</label>
-                <select id="startYear"></select>
-                <!-- Add similar fields for month, day, hour, minute -->
-                <button type="button" id="saveTimeEntryButton">Save Entry</button>
-            </form>
-
             <div class="section">
                 <h2>Time Entries</h2>
                 <ul id="timeEntryList">
@@ -94,13 +83,12 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const pauseResumeButton = document.getElementById('pauseResumeButton');
-        const saveTimeEntryButton = document.getElementById('saveTimeEntryButton');
 
         if (addProjectButton) {
             addProjectButton.addEventListener('click', addProject);
         }
         if (startButton) {
-            startButton.addEventListener('click', startTimerConfirmation);
+            startButton.addEventListener('click', startTimer);
         }
         if (stopButton) {
             stopButton.addEventListener('click', stopTimer);
@@ -108,10 +96,6 @@
         if (pauseResumeButton) {
             pauseResumeButton.addEventListener('click', togglePauseResume);
         }
-        if (saveTimeEntryButton) {
-            saveTimeEntryButton.addEventListener('click', saveTimeEntry);
-        }
-
         document.getElementById('clearDatabaseButton').addEventListener('click', clearDatabase);
         document.getElementById('newProjectName').addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
@@ -212,25 +196,17 @@
         loadTimeEntries(); // Load time entries when the current project is set
     }
 
-    function startTimerConfirmation() {
-        if (currentProject) {
-            startTimer();
-        } else {
-            alert("Please select a project first.");
-        }
+function startTimer() {
+    if (isRunning) {
+        alert("Timer is already running.");
+        return;
     }
 
-    function startTimer() {
-        if (isRunning) {
-            alert("Timer is already running.");
-            return;
-        }
-
-        isRunning = true;
-        isPaused = false;
-        startTime = Date.now() - elapsedTime;
-        timerInterval = setInterval(updateTimeDisplay, 1000);
-    }
+    isRunning = true;
+    isPaused = false;
+    startTime = Date.now() - elapsedTime; // Initialize startTime correctly
+    timerInterval = setInterval(updateTimeDisplay, 1000);
+}
 
     function updateTimeDisplay() {
         if (isPaused || !isRunning) return;
@@ -267,6 +243,9 @@ function stopTimer() {
         isRunning = false;
         isPaused = false;
         
+        // Ensure elapsedTime is updated
+        updateTimeDisplay(); // Update elapsedTime based on the latest display
+        
         // Save the time entry
         saveTimeEntry();
         
@@ -282,10 +261,7 @@ function stopTimer() {
 
     function resetTimer() {
         elapsedTime = 0;
-        startTime = null; // Ensure startTime is reset
         document.getElementById('timeDisplay').textContent = '00:00:00';
-        document.getElementById('currentProjectName').textContent = 'None';
-        currentProject = null; // Optionally clear the current project
     }
 
 function loadTimeEntries() {
@@ -319,16 +295,18 @@ function renderTimeEntryList(timeEntries) {
 
         // Create the text content for the time entry
         const textContent = document.createElement('span');
+        textContent.className = 'time-entry-text';
         textContent.textContent = `Start: ${new Date(entry.start).toLocaleString()} - End: ${new Date(entry.end).toLocaleString()} (Duration: ${formatDuration(entry.duration)})`;
         listItem.appendChild(textContent);
 
         // Create the remove button
         const removeButton = document.createElement('button');
         removeButton.textContent = 'X';
-        removeButton.className = 'remove-time-entry-button'; // Use the updated CSS class
+        removeButton.className = 'remove-time-entry-button';
 
         // Add event listener to remove button
-        removeButton.addEventListener('click', function() {
+        removeButton.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent event from bubbling up
             removeTimeEntry(entry.id);
         });
 
@@ -336,7 +314,6 @@ function renderTimeEntryList(timeEntries) {
         timeEntryListElement.appendChild(listItem);
     });
 }
-
 
 
 function formatDuration(duration) {
@@ -352,88 +329,32 @@ function saveTimeEntry() {
             let transaction = db.transaction(['timeEntries'], 'readwrite');
             let store = transaction.objectStore('timeEntries');
 
-            let entry;
-            if (elapsedTime > 0) { // Handle case when timer is stopped
-                let startDateTime = new Date(startTime);
-                let endDateTime = new Date();
-                entry = {
-                    projectId: currentProject.id,
-                    start: startDateTime.toISOString(),
-                    end: endDateTime.toISOString(),
-                    duration: elapsedTime
-                };
-            } else {
-                // Handle manual entry case if form is visible
-                const timeEntryForm = document.getElementById('timeEntryForm');
-                if (timeEntryForm.style.display === 'block') {
-                    const startYearElement = document.getElementById('startYear');
-                    const startMonthElement = document.getElementById('startMonth');
-                    const startDayElement = document.getElementById('startDay');
-                    const startHourElement = document.getElementById('startHour');
-                    const startMinuteElement = document.getElementById('startMinute');
-
-                    if (startYearElement && startMonthElement && startDayElement && startHourElement && startMinuteElement) {
-                        let startDate = new Date(
-                            startYearElement.value,
-                            startMonthElement.value - 1,
-                            startDayElement.value,
-                            startHourElement.value,
-                            startMinuteElement.value
-                        );
-                        let endDate = new Date(
-                            document.getElementById('endYear').value,
-                            document.getElementById('endMonth').value - 1,
-                            document.getElementById('endDay').value,
-                            document.getElementById('endHour').value,
-                            document.getElementById('endMinute').value
-                        );
-
-                        entry = {
-                            projectId: currentProject.id,
-                            start: startDate.toISOString(),
-                            end: endDate.toISOString(),
-                            duration: endDate - startDate
-                        };
-                    } else {
-                        console.error('Form elements for manual entry are missing.');
-                        alert('Please complete the time entry form.');
-                        return;
-                    }
-                } else {
-                    console.error('No timer running and no manual entry.');
-                    alert('Please start a timer or enter time manually.');
-                    return;
-                }
-            }
+            let endDateTime = new Date();
+            let entry = {
+                projectId: currentProject.id,
+                start: new Date(endDateTime - elapsedTime).toISOString(),
+                end: endDateTime.toISOString(),
+                duration: elapsedTime
+            };
 
             let request = store.add(entry);
 
             request.onsuccess = function() {
-                resetTimer();
-                loadProjects();
-                document.getElementById('timeEntryForm').style.display = 'none'; // Hide the form after saving
+                console.log('Time entry saved successfully');
+                loadTimeEntries(); // Refresh time entries for the current project
             };
 
             request.onerror = function(event) {
-                console.log('Error saving time entry', event);
+                console.error('Error saving time entry:', event);
             };
         } else {
+            console.error('No project selected.');
             alert('Please select a project first.');
         }
     }).catch(error => {
         console.error('Database error:', error);
     });
 }
-
-    function showTimeEntryForm() {
-        document.getElementById('timeEntryForm').style.display = 'block';
-    }
-
-    function resetTimer() {
-        elapsedTime = 0;
-        document.getElementById('timeDisplay').textContent = '00:00:00';
-        document.getElementById('currentProjectName').textContent = 'None';
-    }
 
 function removeTimeEntry(id) {
     dbReady.then(() => {

@@ -22,7 +22,7 @@ body {
     display: flex;
     gap: 20px;
     width: 100%;
-    max-width: 1200px; /* Optional, limits the width of the container */
+    max-width: 1920px; /* Optional, limits the width of the container */
 }
 
 /* Column styles */
@@ -33,7 +33,12 @@ body {
     padding: 20px;
     text-align: center;
     flex: 1;
-    min-width: 300px;
+    /*min-width: 300px;*/
+}
+
+.column {
+    /* Adjust the width as needed */
+    width: 200%; /* Example: Increase from default width */
 }
 
 /* Header styles */
@@ -107,29 +112,43 @@ li button {
     cursor: pointer; /* Changes the cursor to a pointer when hovering over list items */
 }
 
-/* Time entry specific styles */
-#timeEntryList li {
-    margin-bottom: 15px; /* Space between each list item */
-    padding: 10px; /* Optional padding */
-    border-bottom: 1px solid #ddd; /* Optional bottom border */
-    display: flex; /* Use Flexbox for layout */
-    align-items: center; /* Center items vertically */
-    position: relative; /* Ensure positioning for child elements */
+#timeEntryList {
+    position: relative;
+    margin-right: 40px; /* Space for the buttons */
 }
 
-/* Styles for delete button */
+#timeEntryList li {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background-color: #f8f8f8;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
 .remove-time-entry-button {
-    background-color: red; /* Red background color */
-    color: white; /* White text color */
+    background-color: red;
+    color: white;
     border: none;
     border-radius: 4px;
     padding: 5px 10px;
-    cursor: pointer; /* Pointer cursor for clicking */
+    cursor: pointer;
     font-weight: bold;
-    font-size: 16px;
-    margin-left: 10px; /* Space between the entry text and the button */
-    position: absolute; /* Position the button absolutely within the li */
-    right: 10px; /* Fixed position from the right */
+    font-size: 14px;
+    position: absolute;
+    right: -40px; /* Position the button outside the li */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1; /* Ensure the button is above other elements */
+}
+
+/* Add this new rule to contain the text */
+.time-entry-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 50px); /* Leave some space for the button */
 }
 
 .remove-time-entry-button:hover {
