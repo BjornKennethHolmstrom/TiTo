@@ -258,18 +258,57 @@ function loadProjects() {
                     console.log('Project and associated time entries deleted');
                     if (currentProject && currentProject.id === projectId) {
                         currentProject = null;
-                        document.getElementById('timeDisplay').textContent = '00:00:00';
+                        resetTimer();
                     }
                     loadProjects();
-                    loadTimeEntries();
+                    if (currentProject) {
+                        loadTimeEntries();
+                    } else {
+                        clearTimeEntryList();
+                    }
                 };
             }).catch(error => {
                 console.error('Database error:', error);
             });
         }
     }
+    
+    function clearTimeEntryList() {
+        const timeEntryListElement = document.getElementById('timeEntryList');
+        if (timeEntryListElement) {
+            timeEntryListElement.innerHTML = '';
+        }
+    }
+    
+    function loadProjects() {
+        dbReady.then(() => {
+            let transaction = db.transaction(['projects'], 'readonly');
+            let store = transaction.objectStore('projects');
+            let request = store.getAll();
+
+            request.onsuccess = function(event) {
+                const projects = event.target.result;
+                console.log('Loaded projects:', projects);
+                renderProjectList(projects);
+                if (projects.length === 0) {
+                    currentProject = null;
+                    clearTimeEntryList();
+                } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
+                    setCurrentProject(projects[0]);
+                }
+            };
+
+            request.onerror = function(event) {
+                console.error('Error loading projects:', event);
+            };
+        }).catch(error => {
+            console.error('Database error in loadProjects:', error);
+        });
+    }    
 
     function setCurrentProject(project) {
+        currentProject = project;
+
         // Remove 'selected' class from all project items
         const projectItems = document.querySelectorAll('#projectList li');
         projectItems.forEach(item => item.classList.remove('selected'));
@@ -280,9 +319,6 @@ function loadProjects() {
             selectedItem.classList.add('selected');
         }
 
-        currentProject = project;
-        // Remove this line as we no longer update the text display
-        // document.getElementById('currentProjectName').textContent = project.name;
         loadTimeEntries();
     }
 

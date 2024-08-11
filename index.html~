@@ -198,11 +198,26 @@ function loadProjects() {
 
         projects.forEach(project => {
             const listItem = document.createElement('li');
-            listItem.textContent = project.name;
-            listItem.dataset.projectId = project.id; // Add this line to store the project ID
-            listItem.addEventListener('click', function() {
+            listItem.dataset.projectId = project.id;
+
+            const projectName = document.createElement('span');
+            projectName.textContent = project.name;
+            projectName.className = 'project-name';
+            projectName.addEventListener('click', function() {
                 setCurrentProject(project);
             });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '🗑️';
+            deleteButton.className = 'remove-project-button';
+            deleteButton.title = 'Delete project';
+            deleteButton.addEventListener('click', function(event) {
+                event.stopPropagation();
+                deleteProject(project.id);
+            });
+
+            listItem.appendChild(projectName);
+            listItem.appendChild(deleteButton);
             projectListElement.appendChild(listItem);
         });
 
@@ -214,6 +229,82 @@ function loadProjects() {
             }
         }
     }
+
+    function deleteProject(projectId) {
+        if (confirm('Are you sure you want to delete this project? All associated time entries will also be deleted.')) {
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects', 'timeEntries'], 'readwrite');
+                let projectStore = transaction.objectStore('projects');
+                let timeEntryStore = transaction.objectStore('timeEntries');
+
+                // Delete the project
+                projectStore.delete(projectId).onsuccess = function() {
+                    console.log('Project deleted');
+                };
+
+                // Delete all time entries for this project
+                let index = timeEntryStore.index('projectId');
+                let request = index.openCursor(IDBKeyRange.only(projectId));
+
+                request.onsuccess = function(event) {
+                    let cursor = event.target.result;
+                    if (cursor) {
+                        timeEntryStore.delete(cursor.primaryKey);
+                        cursor.continue();
+                    }
+                };
+
+                transaction.oncomplete = function() {
+                    console.log('Project and associated time entries deleted');
+                    if (currentProject && currentProject.id === projectId) {
+                        currentProject = null;
+                        resetTimer();
+                    }
+                    loadProjects();
+                    if (currentProject) {
+                        loadTimeEntries();
+                    } else {
+                        clearTimeEntryList();
+                    }
+                };
+            }).catch(error => {
+                console.error('Database error:', error);
+            });
+        }
+    }
+    
+    function clearTimeEntryList() {
+        const timeEntryListElement = document.getElementById('timeEntryList');
+        if (timeEntryListElement) {
+            timeEntryListElement.innerHTML = '';
+        }
+    }
+    
+    function loadProjects() {
+        dbReady.then(() => {
+            let transaction = db.transaction(['projects'], 'readonly');
+            let store = transaction.objectStore('projects');
+            let request = store.getAll();
+
+            request.onsuccess = function(event) {
+                const projects = event.target.result;
+                console.log('Loaded projects:', projects);
+                renderProjectList(projects);
+                if (projects.length === 0) {
+                    currentProject = null;
+                    clearTimeEntryList();
+                } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
+                    setCurrentProject(projects[0]);
+                }
+            };
+
+            request.onerror = function(event) {
+                console.error('Error loading projects:', event);
+            };
+        }).catch(error => {
+            console.error('Database error in loadProjects:', error);
+        });
+    }    
 
     function setCurrentProject(project) {
         // Remove 'selected' class from all project items
