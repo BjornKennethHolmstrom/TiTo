@@ -37,6 +37,7 @@
             </div>
             <div class="section">
                 <h2>Time Entries</h2>
+                <button id="addManualEntryButton">Add Manual Entry</button>
                 <ul id="timeEntryList">
                     <!-- Time entry list items will be inserted here -->
                 </ul>
@@ -68,6 +69,7 @@
 
             let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
             timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
+
         };
     });
 
@@ -83,6 +85,10 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const pauseResumeButton = document.getElementById('pauseResumeButton');
+        const addManualEntryButton = document.getElementById('addManualEntryButton');
+        if (addManualEntryButton) {
+            addManualEntryButton.addEventListener('click', addManualEntry);
+        }
 
         if (addProjectButton) {
             addProjectButton.addEventListener('click', addProject);
@@ -204,38 +210,39 @@ function startTimer() {
 
     isRunning = true;
     isPaused = false;
-    startTime = Date.now() - elapsedTime; // Initialize startTime correctly
+    startTime = Date.now();
+    elapsedTime = 0;
+    console.log('Timer started at:', new Date(startTime));
     timerInterval = setInterval(updateTimeDisplay, 1000);
 }
 
-    function updateTimeDisplay() {
-        if (isPaused || !isRunning) return;
+function updateTimeDisplay() {
+    if (isPaused || !isRunning) return;
 
-        elapsedTime = Date.now() - startTime;
-        const timeDisplay = document.getElementById('timeDisplay');
-        const hours = Math.floor(elapsedTime / 3600000);
-        const minutes = Math.floor((elapsedTime % 3600000) / 60000);
-        const seconds = Math.floor((elapsedTime % 60000) / 1000);
+    let currentTime = Date.now();
+    elapsedTime = currentTime - startTime;
+    const timeDisplay = document.getElementById('timeDisplay');
+    timeDisplay.textContent = formatDuration(elapsedTime);
+    console.log('Current elapsed time:', formatDuration(elapsedTime));
+}
 
-        timeDisplay.textContent = 
-            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+function togglePauseResume() {
+    if (!isRunning) {
+        alert("No timer is currently running.");
+        return;
     }
 
-    function togglePauseResume() {
-        if (!isRunning) {
-            alert("No timer is currently running.");
-            return;
-        }
-
-        if (isPaused) {
-            isPaused = false;
-            startTime = Date.now() - elapsedTime;
-            timerInterval = setInterval(updateTimeDisplay, 1000);
-        } else {
-            isPaused = true;
-            clearInterval(timerInterval);
-        }
+    if (isPaused) {
+        isPaused = false;
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(updateTimeDisplay, 1000);
+        console.log('Timer resumed at:', new Date());
+    } else {
+        isPaused = true;
+        clearInterval(timerInterval);
+        console.log('Timer paused at:', new Date());
     }
+}
 
 function stopTimer() {
     if (isRunning) {
@@ -243,8 +250,14 @@ function stopTimer() {
         isRunning = false;
         isPaused = false;
         
+        let stopTime = Date.now();
+        elapsedTime = stopTime - startTime;
+        
+        console.log('Timer stopped at:', new Date(stopTime));
+        console.log('Elapsed time (ms):', elapsedTime);
+        
         // Save the time entry
-        saveTimeEntry();
+        saveTimeEntry(startTime, stopTime);
         
         // Reset timer and UI
         resetTimer();
@@ -256,10 +269,11 @@ function stopTimer() {
     }
 }
 
-    function resetTimer() {
-        elapsedTime = 0;
-        document.getElementById('timeDisplay').textContent = '00:00:00';
-    }
+function resetTimer() {
+    elapsedTime = 0;
+    startTime = null;
+    document.getElementById('timeDisplay').textContent = '00:00:00';
+}
 
 function loadTimeEntries() {
     if (!currentProject) return;
@@ -299,6 +313,7 @@ function renderTimeEntryList(timeEntries) {
         // Create span for total time
         const totalTimeSpan = document.createElement('span');
         totalTimeSpan.className = 'total-time';
+        console.log('Rendering time entry with duration:', formatDuration(entry.duration));
         totalTimeSpan.textContent = formatDuration(entry.duration);
 
         // Append all elements
@@ -376,7 +391,9 @@ function updateTimeEntry(id, listItem) {
             entry.end = endDate.toISOString();
             entry.duration = duration;
 
-            store.put(entry);
+            store.put(entry).onsuccess = function() {
+                console.log('Time entry updated successfully');
+            };
         };
     });
 }
@@ -398,19 +415,24 @@ function formatDuration(duration) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function saveTimeEntry() {
+function saveTimeEntry(startTime, endTime) {
     dbReady.then(() => {
         if (currentProject) {
             let transaction = db.transaction(['timeEntries'], 'readwrite');
             let store = transaction.objectStore('timeEntries');
 
-            let endDateTime = new Date();
             let entry = {
                 projectId: currentProject.id,
-                start: new Date(endDateTime - elapsedTime).toISOString(),
-                end: endDateTime.toISOString(),
-                duration: elapsedTime
+                start: new Date(startTime).toISOString(),
+                end: new Date(endTime).toISOString(),
+                duration: endTime - startTime
             };
+
+            console.log('Saving time entry:');
+            console.log('Start:', new Date(startTime));
+            console.log('End:', new Date(endTime));
+            console.log('Duration:', formatDuration(entry.duration));
+            console.log('Elapsed time (ms):', entry.duration);
 
             let request = store.add(entry);
 
@@ -444,6 +466,39 @@ function removeTimeEntry(id) {
 
         request.onerror = function(event) {
             console.error('Error removing time entry:', event);
+        };
+    }).catch(error => {
+        console.error('Database error:', error);
+    });
+}
+
+function addManualEntry() {
+    if (!currentProject) {
+        alert('Please select a project first.');
+        return;
+    }
+
+    const now = new Date();
+    const entry = {
+        projectId: currentProject.id,
+        start: now.toISOString(),
+        end: now.toISOString(),
+        duration: 0
+    };
+
+    dbReady.then(() => {
+        let transaction = db.transaction(['timeEntries'], 'readwrite');
+        let store = transaction.objectStore('timeEntries');
+
+        let request = store.add(entry);
+
+        request.onsuccess = function(event) {
+            console.log('Manual time entry added successfully');
+            loadTimeEntries(); // Refresh time entries for the current project
+        };
+
+        request.onerror = function(event) {
+            console.error('Error adding manual time entry:', event);
         };
     }).catch(error => {
         console.error('Database error:', error);
