@@ -92,9 +92,8 @@ Known Limitations
 - There is currently no way to export data from the application.
 
 Future Plans
-- Data export functionality
+- Data import & export functionality
 - Data visualization and reporting features
-- Cloud sync for cross-device usage
 
 Contributing
 We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact me through my website at https://bjornkennethholmstrom.wordpress.com/contact/
