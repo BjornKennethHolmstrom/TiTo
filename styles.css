@@ -19,6 +19,7 @@ body {
 
 .container {
     display: flex;
+    flex-wrap: wrap;
     gap: 20px;
     width: 100%;
     max-width: 1920px;
@@ -29,11 +30,12 @@ body {
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
-    flex: 1;
+    flex: 1 1 300px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    width: 100%;
+    max-width: 100%;
+    min-width: 300px;
     max-height: calc(100vh - 40px); /* Subtract padding from viewport height */
     overflow: hidden; /* Hide overflow */
 }
@@ -65,12 +67,41 @@ body {
     margin: 20px 0;
 }
 
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
 
+.website-link {
+    background-color: #f0f0f0;
+    color: #555;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 3px;
+    font-size: 0.8em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.website-link:hover {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.website-link span {
+    display: inline-block;
+    text-align: center;
+}
 /* Header styles */
 h1 {
 	 text-align: center;
     font-size: 2em;
     margin-bottom: 20px;
+    margin: 0;
 }
 h2 {
     margin-bottom: 15px; /* Adds space below h2 elements, including the Current Project */
@@ -351,13 +382,43 @@ li button {
     background-color: #45a049;
 }
 
-/* Responsive design for smaller screens */
+.chart-container {
+    width: 100%;
+    height: 400px; /* Adjust as needed */
+    margin: 20px 0;
+}
+
+#projectChart {
+/*    width: 100% !important;*/
+    height: 100% !important;
+}
+
+.version {
+    font-size: 0.5em;
+    vertical-align: super;
+    color: #888;
+    margin-left: 5px;
+}
+
 @media (max-width: 1200px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .website-link {
+        margin-top: 10px;
+    }
     .container {
         flex-direction: column;
     }
-    
+    .chart-container {
+        height: 300px; /* Smaller height for mobile devices */
+    }
     .column:first-child {
         flex: 0 0 auto;
     }
+    .column {
+        width: 100%;
+    }
 }
+

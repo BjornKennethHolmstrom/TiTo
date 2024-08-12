@@ -7,6 +7,7 @@ Features
 - Add manual time entries
 - Drag-and-drop interface for reordering projects
 - View and edit time entries
+- Chart displaying time spent on different projects
 - Local data storage using IndexedDB
  -Built with vanilla JavaScript, HTML, and CSS
  -No server required - works entirely in the browser
@@ -14,7 +15,7 @@ Features
 Getting Started
 
 Prerequisites
-- A modern web browser (Chrome, Firefox, Safari, or Edge)
+- A modern web browser (Chrome, Firefox, Safari, Opera or Edge)
 - An internet connection (for downloading only; the app works offline once downloaded)
 
 Installation
@@ -93,7 +94,7 @@ Known Limitations
 
 Future Plans
 - Data import & export functionality
-- Data visualization and reporting features
+- More data visualization and reporting features
 
 Contributing
 We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact me through my website at https://bjornkennethholmstrom.wordpress.com/contact/
