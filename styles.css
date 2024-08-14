@@ -36,10 +36,9 @@ body {
     align-items: stretch;
     max-width: 100%;
     min-width: 300px;
-    max-height: calc(100vh - 40px); /* Subtract padding from viewport height */
-    overflow: hidden; /* Hide overflow */
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
 }
-
 /* Adjust the width of columns */
 .column:first-child {
     flex: 0 0 250px; /* Fixed width for the left column */
@@ -423,6 +422,32 @@ li button {
     }
 }
 
+/* Adjust the width of columns for 1920px width screens */
+@media (min-width: 1920px) {
+    .column:first-child {
+        flex: 0 0 250px; /* Fixed width for the left column */
+    }
+
+    .column:nth-child(2) {
+        flex: 0 0 calc(25% - 20px); /* Narrower second column */
+    }
+
+    .column:nth-child(3) {
+        flex: 1; /* Third column takes up remaining space */
+    }
+}
+
+/* Additional styles for smaller screens */
+@media (max-width: 1919px) {
+    .column:first-child {
+        flex: 0 0 250px; /* Fixed width for the left column */
+    }
+
+    .column:nth-child(2), .column:nth-child(3) {
+        flex: 1; /* Second and third columns take up equal remaining space */
+    }
+}
+
 /* Update the timeEntryList styles */
 #timeEntryList {
     flex-grow: 1;
@@ -458,21 +483,37 @@ li button {
     border-top: 2px solid #007bff;
 }
 
+.time-entry-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Date and time input styles */
+.date-time-group {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+    margin-bottom: 5px;
+}
+
 input[type="date"],
 input[name$="-time"] {
-    margin: 0 5px;
-    padding: 5px;
+    margin: 0 2px;
+    padding: 3px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 input[type="date"] {
-    width: 130px; /* Adjust as needed */
+    width: 110px;
 }
 
 input[name$="-time"] {
-    width: 70px; /* Adjust as needed */
+    width: 60px;
     text-align: center;
 }
 
@@ -482,18 +523,24 @@ input[name$="-time"] {
     color: #666;
 }
 
+/* Description input styles */
 .description-input {
-    flex-grow: 1;
-    margin: 0 10px;
+    flex: 1 1 100%;
+    margin: 5px 0;
     padding: 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    min-width: 0; /* Allows flex item to shrink below its minimum content size */
+    white-space: normal; /* Allows text to wrap */
+    word-break: break-word; /* Breaks long words if necessary */
 }
 
+/* Total time and remove button styles */
 .total-time {
-    margin: 0 10px;
+    margin-right: 10px;
     font-weight: bold;
+    white-space: nowrap;
 }
 
 .remove-time-entry-button {
@@ -503,43 +550,16 @@ input[name$="-time"] {
     cursor: pointer;
     font-size: 18px;
     padding: 5px;
-    margin-left: 10px;
+    margin-left: auto;
 }
 
 .remove-time-entry-button:hover {
     color: #d9534f;
 }
 
-/*.description-input {
-    margin-left: 10px;
-    margin-right: 10px;
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    flex-grow: 1;
-    min-width: 150px;
-}*/
-
-/*.remove-time-entry-button {
-    background-color: transparent;
-    color: #333;
-    border: none;
-    padding: 5px;
-    cursor: pointer;
-    font-size: 18px;
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 1;
-    transition: transform 0.2s ease;
-}*/
-
 .remove-time-entry-button:hover {
     transform: translateY(-50%) scale(1.2);
 }
-
-
 
 /* Add this new rule to contain the text */
 .time-entry-text {
@@ -602,6 +622,35 @@ input[name$="-time"] {
     margin-left: 5px;
 }
 
+/* Adjust the width of columns for screens 1200px and above */
+@media (min-width: 1200px) {
+    .column:first-child {
+        flex: 0 0 250px; /* Fixed width for the left column */
+    }
+
+    .column:nth-child(2) {
+        flex: 0 0 calc(25% - 20px); /* Narrower second column */
+    }
+
+    .column:nth-child(3) {
+        flex: 1; /* Third column takes up remaining space */
+    }
+}
+
+/* Styles for screens below 1200px */
+@media (max-width: 1199px) {
+    .container {
+        flex-direction: column;
+    }
+    .column {
+        width: 100%;
+    }
+    .column:first-child {
+        flex: 0 0 auto;
+    }
+}
+
+/* Additional responsive adjustments */
 @media (max-width: 1200px) {
     .header {
         flex-direction: column;
@@ -610,17 +659,7 @@ input[name$="-time"] {
     .website-link {
         margin-top: 10px;
     }
-    .container {
-        flex-direction: column;
-    }
     .chart-container {
         height: 300px; /* Smaller height for mobile devices */
     }
-    .column:first-child {
-        flex: 0 0 auto;
-    }
-    .column {
-        width: 100%;
-    }
 }
-

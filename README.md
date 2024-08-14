@@ -2,6 +2,7 @@
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
 Features
+- A clean three-column layout
 - Create and manage multiple projects
 - Start, pause, and stop a timer for active time tracking
 - Add manual time entries

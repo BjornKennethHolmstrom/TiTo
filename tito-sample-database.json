@@ -1,0 +1,80 @@
+{
+  "projects": [
+    {
+      "id": 1,
+      "name": "Website Redesign",
+      "order": 0
+    },
+    {
+      "id": 2,
+      "name": "Client Meeting Prep",
+      "order": 1
+    },
+    {
+      "id": 3,
+      "name": "Blog Writing",
+      "order": 2
+    },
+    {
+      "id": 4,
+      "name": "App Development",
+      "order": 3
+    }
+  ],
+  "timeEntries": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "start": "2024-08-10T09:00:00.000Z",
+      "end": "2024-08-10T11:30:00.000Z",
+      "duration": 9000000,
+      "description": "Homepage layout",
+      "order": 0
+    },
+    {
+      "id": 2,
+      "projectId": 1,
+      "start": "2024-08-11T14:00:00.000Z",
+      "end": "2024-08-11T16:45:00.000Z",
+      "duration": 9900000,
+      "description": "Responsive design implementation",
+      "order": 1
+    },
+    {
+      "id": 3,
+      "projectId": 2,
+      "start": "2024-08-12T10:00:00.000Z",
+      "end": "2024-08-12T11:30:00.000Z",
+      "duration": 5400000,
+      "description": "Prepare presentation slides",
+      "order": 0
+    },
+    {
+      "id": 4,
+      "projectId": 3,
+      "start": "2024-08-13T13:00:00.000Z",
+      "end": "2024-08-13T15:30:00.000Z",
+      "duration": 9000000,
+      "description": "Write article on time management",
+      "order": 0
+    },
+    {
+      "id": 5,
+      "projectId": 4,
+      "start": "2024-08-14T09:30:00.000Z",
+      "end": "2024-08-14T12:00:00.000Z",
+      "duration": 9000000,
+      "description": "Implement user authentication",
+      "order": 0
+    },
+    {
+      "id": 6,
+      "projectId": 4,
+      "start": "2024-08-14T13:30:00.000Z",
+      "end": "2024-08-14T17:00:00.000Z",
+      "duration": 12600000,
+      "description": "Develop dashboard UI",
+      "order": 1
+    }
+  ]
+}
