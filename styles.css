@@ -189,6 +189,37 @@ li button {
     margin-left: 10px;
 }
 
+.section:has(#projectList) {
+    flex-grow: 1;
+    overflow: hidden; /* Hide overflow of the section */
+    display: flex;
+    flex-direction: column;
+}
+
+#projectList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#projectList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#projectList::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#projectList::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+#projectList {
+    overflow-y: auto; /* Enable vertical scrolling */
+    flex-grow: 1; /* Allow the list to grow and fill available space */
+    padding-right: 10px; /* Add some padding for the scrollbar */
+    margin-right: -10px; /* Offset the padding to align with other elements */
+}
+
 #projectList li {
     display: flex;
     justify-content: space-between;
@@ -208,9 +239,17 @@ li button {
     border-left: 4px solid #007bff;
 }
 
-#projectList li:hover {
-    background-color: #f0f0f0;
+/* Add this new style */
+#projectList li:hover .project-name::after {
+    content: " ✎";
+    font-size: 0.8em;
+    color: #007bff;
+    margin-left: 5px;
 }
+
+/*#projectList li:hover {
+    background-color: #f0f0f0;
+}*/
 
 #projectList li.over {
     border-top: 2px solid #000;
@@ -223,6 +262,22 @@ li button {
 .project-name {
     flex-grow: 1;
     margin-right: 10px;
+    padding: 2px 5px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    cursor: default;
+}
+
+.project-name:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.project-name:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: #fff;
+    cursor: text;
 }
 
 .remove-project-button {
@@ -239,13 +294,40 @@ li button {
     transform: scale(1.2);
 }
 
+.green-button {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+    width: calc(100% - 40px);
+    padding: 10px;
+    font-size: 16px;
+    align-self: center;
+}
+
+.green-button:hover {
+    background-color: #45a049; /* Darker green on hover */
+}
+
+.green-button:active {
+    background-color: #3e8e41; /* Even darker when pressed */
+}
+
+#exportDatabaseButton,
+#importDatabaseButton,
+#clearDatabaseButton {
+    margin-top: 10px;
+}
+
 #clearDatabaseButton.red-button {
     background-color: #7B0323 !important; /* Wine red */
     color: white;
     border: none;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-top: auto;
+    margin-top: 10px;
     width: calc(100% - 40px);
     padding: 10px;
     font-size: 16px;
@@ -267,6 +349,80 @@ li button {
     overflow: hidden;
 }
 
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#addManualEntryButton {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    flex: 1;
+}
+
+#addManualEntryButton:hover {
+    background-color: #45a049;
+}
+
+#sortNewestFirstButton,
+#sortOldestFirstButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    flex: 1;
+    opacity: 0.7; /* Slightly faded when not active */
+}
+
+#sortNewestFirstButton:hover,
+#sortOldestFirstButton:hover {
+    opacity: 0.9;
+}
+
+#sortNewestFirstButton.pressed,
+#sortOldestFirstButton.pressed {
+    background-color: #2980b9;
+    transform: scale(0.98);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+    opacity: 1; /* Full opacity when active */
+}
+
+#sortOldestFirstButton {
+    background-color: #e74c3c;
+}
+
+#sortOldestFirstButton:hover {
+    background-color: #c0392b;
+}
+
+#sortOldestFirstButton.pressed {
+    background-color: #c0392b;
+}
+
+@media (max-width: 768px) {
+    .button-container {
+        flex-direction: column;
+    }
+}
+
 /* Update the timeEntryList styles */
 #timeEntryList {
     flex-grow: 1;
@@ -276,49 +432,95 @@ li button {
     max-height: calc(100% - 100px); /* Adjust based on other elements' heights */
 }
 
-/* Style the scrollbar for webkit browsers */
-#timeEntryList::-webkit-scrollbar {
-    width: 8px;
-}
-
-#timeEntryList::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-#timeEntryList::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-#timeEntryList::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Update the timeEntryList li styles */
 #timeEntryList li {
-    margin-bottom: 15px;
-    padding: 10px;
-    border: 1px solid #ddd;
-    background-color: #f8f8f8;
     display: flex;
-    align-items: center;
-    position: relative;
-    justify-content: flex-start;
     flex-wrap: wrap;
-    padding-right: 50px;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: move; /* Indicates the item is draggable */
+    transition: background-color 0.3s ease;
+}
+
+#timeEntryList li:hover {
+    background-color: #f0f0f0;
+}
+
+#timeEntryList li.dragging {
+    opacity: 0.5;
+    background-color: #e0e0e0;
+}
+
+#timeEntryList li.over {
+    border-top: 2px solid #007bff;
+}
+
+input[type="date"],
+input[name$="-time"] {
+    margin: 0 5px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+input[type="date"] {
+    width: 130px; /* Adjust as needed */
+}
+
+input[name$="-time"] {
+    width: 70px; /* Adjust as needed */
+    text-align: center;
+}
+
+.date-display {
+    margin: 0 5px;
+    font-size: 14px;
+    color: #666;
 }
 
 .description-input {
+    flex-grow: 1;
+    margin: 0 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.total-time {
+    margin: 0 10px;
+    font-weight: bold;
+}
+
+.remove-time-entry-button {
+    background-color: transparent;
+    color: #333;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.remove-time-entry-button:hover {
+    color: #d9534f;
+}
+
+/*.description-input {
     margin-left: 10px;
     margin-right: 10px;
     padding: 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
     flex-grow: 1;
-    min-width: 150px; /* Ensure a minimum width */
-}
+    min-width: 150px;
+}*/
 
-.remove-time-entry-button {
+/*.remove-time-entry-button {
     background-color: transparent;
     color: #333;
     border: none;
@@ -331,7 +533,7 @@ li button {
     transform: translateY(-50%);
     z-index: 1;
     transition: transform 0.2s ease;
-}
+}*/
 
 .remove-time-entry-button:hover {
     transform: translateY(-50%) scale(1.2);

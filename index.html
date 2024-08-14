@@ -11,7 +11,7 @@
     <div class="container">
         <!-- Left Column: Title, Timer, and Clear Database -->
         <div class="column">
-            <h1>🕚 TiTo Time Tracker <span class="version">v1.01</span></h1>
+            <h1>🕚 TiTo Time Tracker <span class="version">v1.02</span></h1>
             <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="website-link" target="_blank" rel="noopener noreferrer">
                 <span>Official Website</span>
             </a>
@@ -23,6 +23,9 @@
                 </div>
                 <div id="timeDisplay">00:00:00</div>
             </div>
+            <button id="exportDatabaseButton" class="green-button">Export Database</button>
+            <button id="importDatabaseButton" class="green-button">Import Database</button>
+            <input type="file" id="importFileInput" style="display: none;" accept=".json">
             <button id="clearDatabaseButton" class="red-button">Clear Database</button>
         </div>
 
@@ -43,13 +46,15 @@
 
         <!-- Right Column: Time Entries -->
         <div class="column">
-            <div class="section time-entries-section">
-                <h2>Time Entries</h2>
-                <button id="addManualEntryButton">Add Manual Entry</button>
-                <ul id="timeEntryList">
-                    <!-- Time entry list items will be inserted here -->
-                </ul>
+          <div class="section time-entries-section">
+            <h2>Time Entries</h2>
+            <div class="button-container">
+              <button id="addManualEntryButton">Add Manual Entry</button>
+              <button id="sortNewestFirstButton">Sort Newest First</button>
+              <button id="sortOldestFirstButton">Sort Oldest First</button>
             </div>
+            <ul id="timeEntryList"></ul>
+          </div>
         </div>
         <div class="chart-container">
             <canvas id="projectChart"></canvas>
