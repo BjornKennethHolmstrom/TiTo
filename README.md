@@ -95,6 +95,9 @@ Future Plans
 - Clear all entries-button for time list entries
 - More data visualization and reporting features
 
+License
+See the included file named LICENSE
+
 Contributing
 
 We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact me through my website at 
@@ -106,7 +109,6 @@ Any amount is greatly appreciated!
 
 
 Acknowledgments
-
-Claude, an AI assistant created by Anthropic, for assistance in development and documentation.
+- Claude, an AI assistant created by Anthropic, for assistance in development and documentation.
 
 Thank you for using TiTo Time Tracker! We hope it helps you manage your time more effectively.
