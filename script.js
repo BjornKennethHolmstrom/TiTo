@@ -36,12 +36,14 @@ let isPaused = false;
 let isRunning = false;
 let isTimerRunning = false;
 let timerInterval;
+let timerProject = null;
 let projectChart = null;
 let currentSortOrder = 'newest'; // Default sort order
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeDB();
     initializeUI();
+    startTimerDisplayUpdate();
     dbReady.then(() => {
         return loadProjects();
     }).then(() => {
@@ -323,9 +325,8 @@ function renderProjectList(projects) {
         const projectName = document.createElement('span');
         projectName.textContent = project.name;
         projectName.className = 'project-name';
-        projectName.contentEditable = true; // Make the project name editable
+        projectName.contentEditable = true;
 
-        // Add double-click event listener for editing
         projectName.addEventListener('dblclick', function(event) {
             event.stopPropagation();
             this.focus();
@@ -353,7 +354,6 @@ function renderProjectList(projects) {
         listItem.appendChild(projectName);
         listItem.appendChild(deleteButton);
 
-        // Add click event listener to the list item for project selection
         listItem.addEventListener('click', function(event) {
             if (event.target !== projectName && event.target !== deleteButton) {
                 setCurrentProject(project);
@@ -362,18 +362,14 @@ function renderProjectList(projects) {
 
         projectListElement.appendChild(listItem);
 
-        // Add drag and drop event listeners
         listItem.addEventListener('dragstart', handleDragStart);
         listItem.addEventListener('dragover', handleDragOver);
         listItem.addEventListener('drop', handleDrop);
         listItem.addEventListener('dragend', handleDragEnd);
 
-        attachEventListeners(listItem);
-
         projectListElement.appendChild(listItem);
     });
 
-    // Highlight the current project if one is selected
     if (currentProject) {
         const currentProjectItem = projectListElement.querySelector(`[data-project-id="${currentProject.id}"]`);
         if (currentProjectItem) {
@@ -381,6 +377,7 @@ function renderProjectList(projects) {
         }
     }
 }
+
 function updateProjectName(projectId, newName) {
     if (!newName) {
         showError('Project name cannot be empty.');
@@ -604,6 +601,12 @@ function deleteProject(projectId) {
                     currentProject = null;
                     resetTimer();
                 }
+                if (timerProject === projectId) {
+                    timerProject = null;
+                    if (isTimerRunning) {
+                        stopTimer();
+                    }
+                }
                 loadProjects();
                 if (currentProject) {
                     loadTimeEntries();
@@ -659,11 +662,9 @@ function loadProjects() {
 function setCurrentProject(project) {
     currentProject = project;
 
-    // Remove 'selected' class from all project items
     const projectItems = document.querySelectorAll('#projectList li');
     projectItems.forEach(item => item.classList.remove('selected'));
 
-    // Add 'selected' class to the clicked project item
     const selectedItem = document.querySelector(`#projectList li[data-project-id="${project.id}"]`);
     if (selectedItem) {
         selectedItem.classList.add('selected');
@@ -674,6 +675,45 @@ function setCurrentProject(project) {
         console.error('Error loading time entries:', error);
         showError('Failed to load time entries for the selected project');
     });
+
+    updateTimerProjectDisplay();
+}
+
+function startTimerDisplayUpdate() {
+    setInterval(updateTimerProjectDisplay, 1000); // Update every second
+}
+
+function updateTimerProjectDisplay() {
+    const timerProjectDisplay = document.getElementById('timerProjectDisplay');
+    if (timerProjectDisplay) {
+        if (isTimerRunning && timerProject !== null) {
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects'], 'readonly');
+                let store = transaction.objectStore('projects');
+                let request = store.get(timerProject);
+
+                request.onsuccess = function(event) {
+                    const project = event.target.result;
+                    if (project) {
+                        timerProjectDisplay.textContent = `Timer running for: ${project.name}`;
+                        timerProjectDisplay.style.display = 'block'; // Make sure it's visible
+                    } else {
+                        timerProjectDisplay.textContent = 'Timer running for: Unknown project';
+                        timerProjectDisplay.style.display = 'block';
+                    }
+                };
+
+                request.onerror = function(event) {
+                    console.error('Error fetching timer project:', event);
+                    timerProjectDisplay.textContent = 'Timer running for: Unknown project';
+                    timerProjectDisplay.style.display = 'block';
+                };
+            });
+        } else {
+            timerProjectDisplay.textContent = '';
+            timerProjectDisplay.style.display = 'none'; // Hide when no timer is running
+        }
+    }
 }
 
 function togglePlayPause() {
@@ -694,9 +734,11 @@ function startTimer() {
     isTimerRunning = true;
     isPaused = false;
     startTime = Date.now();
-    console.log('Timer started at:', new Date(startTime));
+    timerProject = currentProject.id; // Store the project ID instead of the whole project
+    console.log('Timer started at:', new Date(startTime), 'for project ID:', timerProject);
     timerInterval = setInterval(updateTimeDisplay, 1000);
     updatePlayPauseButton();
+    updateTimerProjectDisplay(); // Add this line to update the display immediately
 }
 
 function pauseTimer() {
@@ -725,11 +767,43 @@ function stopTimer() {
         console.log('Timer stopped at:', new Date(stopTime));
         console.log('Elapsed time (ms):', elapsedTime);
         
-        saveTimeEntry(startTime, stopTime);
-        resetTimer();
-        loadTimeEntries();
-        // Scroll to bottom after stopping the timer
-        scrollToBottom(document.getElementById('timeEntryList'));
+        if (timerProject !== null) {
+            // Check if the timerProject still exists
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects'], 'readonly');
+                let store = transaction.objectStore('projects');
+                let request = store.get(timerProject);
+
+                request.onsuccess = function(event) {
+                    const project = event.target.result;
+                    if (project) {
+                        // Project still exists, save the time entry
+                        saveTimeEntry(startTime, stopTime);
+                        console.log('Time entry saved for project:', project.name);
+                    } else {
+                        console.log('Project was deleted while timer was running. Time entry not saved.');
+                        showError('The project was deleted while the timer was running. Time entry not saved.');
+                    }
+                    resetTimer();
+                    loadTimeEntries();
+                    scrollToBottom(document.getElementById('timeEntryList'));
+                };
+
+                request.onerror = function(event) {
+                    console.error('Error checking project existence:', event);
+                    showError('Error checking project existence. Time entry not saved.');
+                    resetTimer();
+                };
+            }).catch(error => {
+                console.error('Database error:', error);
+                showError('Failed to access database when stopping timer');
+                resetTimer();
+            });
+        } else {
+            console.log('No project associated with the timer. Time entry not saved.');
+            showError('No project associated with the timer. Time entry not saved.');
+            resetTimer();
+        }
     } else {
         alert("No timer is currently running.");
     }
@@ -760,6 +834,7 @@ function resetTimer() {
     startTime = null;
     isTimerRunning = false;
     isPaused = false;
+    timerProject = null; // Reset the timer project
     clearInterval(timerInterval);
     document.getElementById('timeDisplay').textContent = '00:00:00';
     updatePlayPauseButton();
@@ -1187,19 +1262,19 @@ function updateTimeEntryDescription(id, description) {
 
 function saveTimeEntry(startTime, endTime) {
     dbReady.then(() => {
-        if (currentProject) {
+        if (timerProject !== null) {
             let transaction = db.transaction(['timeEntries'], 'readwrite');
             let store = transaction.objectStore('timeEntries');
 
             let entry = {
-                projectId: currentProject.id,
+                projectId: timerProject,
                 start: new Date(startTime).toISOString(),
                 end: new Date(endTime).toISOString(),
                 duration: endTime - startTime,
                 description: ''
             };
 
-            console.log('Saving time entry:',entry);
+            console.log('Saving time entry:', entry);
             console.log('Start:', new Date(startTime));
             console.log('End:', new Date(endTime));
             console.log('Duration:', formatDuration(entry.duration));
@@ -1209,7 +1284,9 @@ function saveTimeEntry(startTime, endTime) {
 
             request.onsuccess = function() {
                 console.log('Time entry saved successfully');
-                loadTimeEntries(); // Refresh time entries for the current project
+                if (currentProject && currentProject.id === timerProject) {
+                    loadTimeEntries(); // Refresh time entries only if the current project matches the timer project
+                }
                 visualizeProjectData();
             };
 
@@ -1218,13 +1295,15 @@ function saveTimeEntry(startTime, endTime) {
                 showError('Error saving time entry in database');
             };
         } else {
-            alert('Please select a project first.');
+            console.error('No project associated with the timer');
+            showError('No project associated with the timer. Time entry not saved.');
         }
     }).catch(error => {
         console.error('Database error:', error);
         showError('Failed to load database when saving time entry');
     });
 }
+
 
 function removeTimeEntry(id) {
     dbReady.then(() => {
@@ -1440,4 +1519,19 @@ function clearDatabase() {
         });
     }
 }
+
+// Add this function to help with debugging
+function logTimerState() {
+    console.log('Timer State:');
+    console.log('isTimerRunning:', isTimerRunning);
+    console.log('isPaused:', isPaused);
+    console.log('timerProject:', timerProject);
+    console.log('currentProject:', currentProject ? currentProject.id : 'None');
+    console.log('startTime:', startTime);
+    console.log('elapsedTime:', elapsedTime);
+}
+// Call this function at key points in your code, such as:
+// - At the end of startTimer()
+// - At the beginning and end of stopTimer()
+// - At the beginning of setCurrentProject()
 
