@@ -41,10 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDB();
     initializeUI();
     startTimerDisplayUpdate();
+
     dbReady.then(() => {
         return loadProjects();
     }).then(() => {
         loadTimeEntries();
+//        visualizeProjectData(); //remove comment if charts not shown initally
     }).catch(error => {
         log(LogLevel.ERROR, 'Error initializing app:', error);
         showError('Failed to initialize the app. Please refresh the page.');
@@ -150,6 +152,127 @@ function initializeUI() {
 
     // Set initial button state
     updateSortButtonStates(currentSortOrder);
+
+    const chartTabs = document.querySelectorAll('.chart-tab');
+    const chartSections = document.querySelectorAll('.chart-section');
+
+    if (chartTabs.length === 0 || chartSections.length === 0) {
+        log(LogLevel.WARN, 'Chart tabs or sections not found');
+    } else {
+        chartTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.getAttribute('data-tab');
+                if (!targetId) {
+                    log(LogLevel.WARN, 'Tab missing data-tab attribute');
+                    return;
+                }
+
+                // Remove active class from all tabs and sections
+                chartTabs.forEach(t => t.classList.remove('active'));
+                chartSections.forEach(s => s.classList.remove('active'));
+
+                // Add active class to clicked tab and corresponding section
+                tab.classList.add('active');
+                const targetSection = document.getElementById(`${targetId}ChartSection`);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    // Trigger chart update if necessary
+                    if (targetId === 'timeRange') {
+                        visualizeProjectData();
+                    }
+                } else {
+                    log(LogLevel.WARN, `Chart section not found: ${targetId}ChartSection`);
+                }
+            });
+        });
+
+        log(LogLevel.INFO, 'Chart tab switching initialized');
+    }
+
+    // Add event listener for chart date range selection
+    const applyDateRangeButton = document.getElementById('applyDateRange');
+    if (applyDateRangeButton) {
+        applyDateRangeButton.addEventListener('click', function() {
+            visualizeProjectData();
+        });
+    } else {
+        log(LogLevel.WARN, 'Apply date range button not found');
+    }
+
+    // Set default date range (e.g., last 7 days)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Set to beginning of the day
+    
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const quickDateRange = document.getElementById('quickDateRange');
+    
+    if (startDateInput && endDateInput && quickDateRange) {
+        startDateInput.value = formatDate(today);
+        endDateInput.value = formatDate(today);
+        quickDateRange.value = 'today';  // Set the dropdown to 'today'
+    } else {
+        log(LogLevel.WARN, 'Date input fields or quick date range select not found');
+    }
+
+    function setTodayDates() {
+        const today = new Date();
+        const todayString = formatDate(today);
+        if (startDateInput && endDateInput) {
+            startDateInput.value = todayString;
+            endDateInput.value = todayString;
+        }
+    }
+
+    setTodayDates(); // Set initial dates
+
+    if (quickDateRange) {
+        quickDateRange.addEventListener('change', function() {
+            const selectedValue = this.value;
+            const today = new Date();
+
+            if (startDateInput && endDateInput) {
+                switch(selectedValue) {
+                    case 'today':
+                        setTodayDates();
+                        break;
+                    case 'thisWeek':
+                        const firstDayOfWeek = new Date(today);
+                        firstDayOfWeek.setDate(today.getDate() - today.getDay());  // Set to last Sunday
+                        startDateInput.value = formatDate(firstDayOfWeek);
+                        endDateInput.value = formatDate(today);
+                        break;
+                    case 'thisMonth':
+                        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                        startDateInput.value = formatDate(firstDayOfMonth);
+                        endDateInput.value = formatDate(today);
+                        break;
+                    case 'last7Days':
+                        const sevenDaysAgo = new Date(today);
+                        sevenDaysAgo.setDate(today.getDate() - 6);  // 7 days including today
+                        startDateInput.value = formatDate(sevenDaysAgo);
+                        endDateInput.value = formatDate(today);
+                        break;
+                    case 'last30Days':
+                        const thirtyDaysAgo = new Date(today);
+                        thirtyDaysAgo.setDate(today.getDate() - 29);  // 30 days including today
+                        startDateInput.value = formatDate(thirtyDaysAgo);
+                        endDateInput.value = formatDate(today);
+                        break;
+                    case 'custom':
+                        // Do nothing, let the user select custom dates
+                        break;
+                }
+
+                // Trigger visualization update
+                visualizeProjectData();
+            } else {
+                log(LogLevel.WARN, 'Date input fields not found when updating quick date range');
+            }
+        });
+    } else {
+        log(LogLevel.WARN, 'Quick date range select not found');
+    }
 }
 
 function updateSortButtonStates(activeOrder) {
@@ -1451,20 +1574,71 @@ function addManualEntry() {
 
 function visualizeProjectData() {
     dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readonly');
-        let store = transaction.objectStore('timeEntries');
-        let request = store.getAll();
+        let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
+        let timeEntryStore = transaction.objectStore('timeEntries');
+        let projectStore = transaction.objectStore('projects');
 
-        request.onsuccess = function(event) {
-            const timeEntries = event.target.result;
-            const projectTotals = calculateProjectTotals(timeEntries);
-            renderProjectChart(projectTotals);
-        };
+        Promise.all([
+            new Promise((resolve, reject) => {
+                let request = timeEntryStore.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            }),
+            new Promise((resolve, reject) => {
+                let request = projectStore.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            })
+        ]).then(([allTimeEntries, projects]) => {
+            window.sortedProjects = projects.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        request.onerror = function(event) {
-            log(LogLevel.ERROR, 'Error fetching time entries for visualization:', event);
+            const overallProjectTotals = calculateProjectTotals(allTimeEntries);
+            updateOverallChart(overallProjectTotals);
+            
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            if (!startDateInput || !endDateInput) {
+                log(LogLevel.ERROR, 'Date input elements not found');
+                return;
+            }
+
+            let startDate = new Date(startDateInput.value + 'T00:00:00');
+            let endDate = new Date(endDateInput.value + 'T23:59:59.999');
+
+            // Check if it's "Today" view
+            const isToday = startDate.toDateString() === new Date().toDateString() && 
+                            endDate.toDateString() === new Date().toDateString();
+
+            const rangeTimeEntries = allTimeEntries.filter(entry => {
+                const entryStart = new Date(entry.start);
+                const entryEnd = new Date(entry.end);
+
+                if (isToday) {
+                    // For "Today" view, only include entries that have some part in today
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    return (entryStart >= today && entryStart < tomorrow) ||
+                           (entryEnd >= today && entryEnd < tomorrow) ||
+                           (entryStart < today && entryEnd >= tomorrow);
+                } else {
+                    // For other views, use the selected date range
+                    return (entryStart >= startDate && entryStart <= endDate) ||
+                           (entryEnd >= startDate && entryEnd <= endDate) ||
+                           (entryStart <= startDate && entryEnd >= endDate);
+                }
+            });
+            
+            const rangeProjectTotals = calculateProjectTotals(rangeTimeEntries);
+            
+            updateTimeRangeCharts(rangeProjectTotals, formatDate(startDate), formatDate(endDate));
+        }).catch(error => {
+            log(LogLevel.ERROR, 'Error fetching data for visualization:', error);
             showError('Failed to fetch data for visualization.');
-        };
+        });
     }).catch(error => {
         log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to visualize data due to a database error.');
@@ -1482,84 +1656,198 @@ function calculateProjectTotals(timeEntries) {
     return projectTotals;
 }
 
-function renderProjectChart(projectTotals) {
-    const ctx = document.getElementById('projectChart').getContext('2d');
-    
-    // Fetch projects and sort them by their order
-    dbReady.then(() => {
-        let transaction = db.transaction(['projects'], 'readonly');
-        let store = transaction.objectStore('projects');
-        let request = store.getAll();
+function updateOverallChart(projectTotals) {
+    if (!window.sortedProjects || window.sortedProjects.length === 0) {
+        log(LogLevel.WARN, 'No projects available for chart visualization');
+        return;
+    }
 
-        request.onsuccess = function(event) {
-            const projects = event.target.result;
-            
-            // Sort projects by their order
-            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+    const ctx = document.getElementById('overallProjectChart');
+    if (!ctx) {
+        log(LogLevel.ERROR, 'Overall project chart canvas not found');
+        return;
+    }
 
-            const labels = [];
-            const data = [];
+    const labels = [];
+    const data = [];
 
-            projects.forEach(project => {
-                if (projectTotals[project.id]) {
-                    labels.push(project.name);
-                    data.push(projectTotals[project.id] / (1000 * 60 * 60)); // Convert to hours
-                }
-            });
-
-            const chartData = {
-                labels: labels,
-                datasets: [{
-                    label: 'Hours Spent',
-                    data: data,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            };
-
-            const chartOptions = {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Hours'
-                        }
-                    }
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Time Spent on Projects'
-                    }
-                }
-            };
-
-            if (projectChart) {
-                // Update existing chart
-                projectChart.data = chartData;
-                projectChart.options = chartOptions;
-                projectChart.update();
-            } else {
-                // Create new chart
-                projectChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: chartData,
-                    options: chartOptions
-                });
-            }
-        };
-
-        request.onerror = function(event) {
-            log(LogLevel.ERROR, 'Error fetching projects for chart:', event);
-            showError('Failed to fetch project data for chart.');
-        };
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Database error:', error);
-        showError('Failed to render chart due to a database error.');
+    window.sortedProjects.forEach(project => {
+        if (projectTotals[project.id]) {
+            labels.push(project.name);
+            data.push(projectTotals[project.id] / (1000 * 60 * 60)); // Convert to hours
+        }
     });
+
+    const chartData = {
+        labels: labels,
+        datasets: [{
+            label: 'Hours Spent',
+            data: data,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    const chartOptions = {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Hours'
+                }
+            }
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: 'Overall Time Spent on Projects'
+            }
+        }
+    };
+
+    if (window.overallChart) {
+        window.overallChart.data = chartData;
+        window.overallChart.options = chartOptions;
+        window.overallChart.update();
+    } else {
+        window.overallChart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: chartOptions
+        });
+    }
+}
+
+function updateTimeRangeCharts(projectTotals, startDate, endDate) {
+    if (typeof Chart === 'undefined') {
+        log(LogLevel.ERROR, 'Chart.js is not loaded');
+        showError('Chart.js library is not available. Please check your internet connection and reload the page.');
+        return;
+    }
+
+    const pieCtx = document.getElementById('timeRangePieChart');
+    const barCtx = document.getElementById('timeRangeBarChart');
+    
+    if (!pieCtx || !barCtx) {
+        log(LogLevel.ERROR, 'Chart canvas elements not found');
+        return;
+    }
+
+    if (!window.sortedProjects || window.sortedProjects.length === 0) {
+        log(LogLevel.WARN, 'No projects available for time range chart visualization');
+        return;
+    }
+    
+    const labels = [];
+    const data = [];
+
+    // Generate a color palette with more colors
+    const colorPalette = [
+        'rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)', 'rgba(255, 206, 86, 0.8)', 
+        'rgba(75, 192, 192, 0.8)', 'rgba(153, 102, 255, 0.8)', 'rgba(255, 159, 64, 0.8)',
+        'rgba(199, 99, 132, 0.8)', 'rgba(84, 122, 235, 0.8)', 'rgba(205, 156, 86, 0.8)',
+        'rgba(125, 142, 192, 0.8)', 'rgba(103, 152, 255, 0.8)', 'rgba(205, 109, 114, 0.8)',
+        'rgba(255, 99, 71, 0.8)', 'rgba(0, 128, 128, 0.8)', 'rgba(128, 0, 128, 0.8)',
+        'rgba(128, 128, 0, 0.8)', 'rgba(0, 0, 128, 0.8)', 'rgba(128, 0, 0, 0.8)',
+        'rgba(0, 128, 0, 0.8)', 'rgba(128, 128, 128, 0.8)', 'rgba(255, 140, 0, 0.8)',
+        'rgba(0, 191, 255, 0.8)', 'rgba(255, 20, 147, 0.8)', 'rgba(50, 205, 50, 0.8)',
+        'rgba(255, 215, 0, 0.8)', 'rgba(186, 85, 211, 0.8)', 'rgba(255, 105, 180, 0.8)',
+        'rgba(60, 179, 113, 0.8)', 'rgba(65, 105, 225, 0.8)', 'rgba(218, 165, 32, 0.8)'
+    ];
+
+    window.sortedProjects.forEach((project, index) => {
+        if (projectTotals[project.id]) {
+            labels.push(project.name);
+            data.push(projectTotals[project.id] / (1000 * 60 * 60)); // Convert to hours
+        }
+    });
+
+    // Ensure we have enough colors by repeating the palette if necessary
+    const backgroundColors = data.map((_, index) => colorPalette[index % colorPalette.length]);
+
+    // Pie Chart
+    const pieData = {
+        labels: labels,
+        datasets: [{
+            data: data,
+            backgroundColor: backgroundColors,
+        }]
+    };
+
+    const pieOptions = {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: `Time Distribution (${startDate} to ${endDate})`
+            },
+            legend: {
+                display: true,
+                position: 'right'
+            }
+        }
+    };
+
+    if (window.timeRangePieChart instanceof Chart) {
+        window.timeRangePieChart.data = pieData;
+        window.timeRangePieChart.options = pieOptions;
+        window.timeRangePieChart.update();
+    } else {
+        window.timeRangePieChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: pieData,
+            options: pieOptions
+        });
+    }
+
+    // Bar Chart
+    const barData = {
+        labels: labels,
+        datasets: [{
+            label: 'Hours Spent',
+            data: data,
+            backgroundColor: backgroundColors,
+            borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
+            borderWidth: 1
+        }]
+    };
+
+    const barOptions = {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Hours'
+                }
+            }
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: `Time Spent on Projects (${startDate} to ${endDate})`
+            },
+            legend: {
+                display: false
+            }
+        }
+    };
+
+    if (window.timeRangeBarChart instanceof Chart) {
+        window.timeRangeBarChart.data = barData;
+        window.timeRangeBarChart.options = barOptions;
+        window.timeRangeBarChart.update();
+    } else {
+        window.timeRangeBarChart = new Chart(barCtx, {
+            type: 'bar',
+            data: barData,
+            options: barOptions
+        });
+    }
 }
 
 function clearDatabase() {

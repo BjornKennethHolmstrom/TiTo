@@ -58,7 +58,45 @@
           </div>
         </div>
         <div class="chart-container">
-            <canvas id="projectChart"></canvas>
+          <div class="chart-tabs">
+            <button class="chart-tab active" data-tab="overall">Overall Time</button>
+            <button class="chart-tab" data-tab="timeRange">Time Range</button>
+          </div>
+          
+          <div class="chart-content">
+            <div id="overallChartSection" class="chart-section active">
+              <h3>Overall Time Spent on Projects</h3>
+              <canvas id="overallProjectChart"></canvas>
+            </div>
+            
+            <div id="timeRangeChartSection" class="chart-section">
+              <h3>Time Spent in Selected Range</h3>
+              <div class="date-range-selector">
+                  <div class="date-range-selector">
+                    <input type="date" id="startDate">
+                    <input type="date" id="endDate">
+                    <select id="quickDateRange">
+                      <option value="today">Today</option>
+                      <option value="thisWeek">This Week</option>
+                      <option value="thisMonth">This Month</option>
+                      <option value="last7Days">Last 7 Days</option>
+                      <option value="last30Days">Last 30 Days</option>
+                      <option value="custom">Custom Range</option>
+                    </select>
+                    <button id="applyDateRange">Apply</button>
+                  </div>
+              </div>
+              <div class="time-range-charts">
+                <!-- remove chart-wrappers if causing issues -->
+                <div class="chart-wrapper"> 
+                  <canvas id="timeRangePieChart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                  <canvas id="timeRangeBarChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
     </div>
     <script src="script.js"></script>
