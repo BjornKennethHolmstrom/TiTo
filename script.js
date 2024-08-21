@@ -782,14 +782,22 @@ function stopTimer() {
                     const project = event.target.result;
                     if (project) {
                         // Project still exists, save the time entry
-                        saveTimeEntry(startTime, stopTime);
+                        saveTimeEntry(startTime, stopTime).then(() => {
+                            loadTimeEntries().then(() => {
+                                // Scroll to top or bottom based on sort order
+                                const timeEntryList = document.getElementById('timeEntryList');
+                                if (currentSortOrder === 'newest') {
+                                    timeEntryList.scrollTop = 0;
+                                } else {
+                                    scrollToBottom(timeEntryList);
+                                }
+                            });
+                        });
                         log(LogLevel.INFO, 'Time entry saved for project:', project.name);
                     } else {
                         log(LogLevel.INFO, 'Project was deleted while timer was running. Time entry not saved.');
                         showError('The project was deleted while the timer was running. Time entry not saved.');
                     }
-                    loadTimeEntries();
-                    scrollToBottom(document.getElementById('timeEntryList'));
                 };
 
                 request.onerror = function(event) {
@@ -886,6 +894,15 @@ function loadTimeEntries() {
                 
                 renderTimeEntryList(timeEntries);
                 visualizeProjectData();
+
+                // Scroll to top or bottom based on sort order
+                const timeEntryList = document.getElementById('timeEntryList');
+                if (currentSortOrder === 'newest') {
+                    timeEntryList.scrollTop = 0;
+                } else {
+                    scrollToBottom(timeEntryList);
+                }
+
                 resolve();
             };
 
@@ -1317,41 +1334,45 @@ function updateTimeEntryDescription(id, description) {
 
 function saveTimeEntry(startTime, endTime) {
     log(LogLevel.DEBUG, 'Start of saveTimeEntry');
-    dbReady.then(() => {
-        if (timerProject !== null) {
-            let transaction = db.transaction(['timeEntries'], 'readwrite');
-            let store = transaction.objectStore('timeEntries');
+    return new Promise((resolve, reject) => {
+        dbReady.then(() => {
+            if (timerProject !== null) {
+                let transaction = db.transaction(['timeEntries'], 'readwrite');
+                let store = transaction.objectStore('timeEntries');
 
-            let entry = {
-                projectId: timerProject,
-                start: new Date(startTime).toISOString(),
-                end: new Date(endTime).toISOString(),
-                duration: endTime - startTime,
-                description: ''
-            };
+                let entry = {
+                    projectId: timerProject,
+                    start: new Date(startTime).toISOString(),
+                    end: new Date(endTime).toISOString(),
+                    duration: endTime - startTime,
+                    description: ''
+                };
 
-            log(LogLevel.INFO, 'Saving time entry', entry);
+                log(LogLevel.INFO, 'Saving time entry', entry);
 
-            let request = store.add(entry);
+                let request = store.add(entry);
 
-            request.onsuccess = function() {
-                log(LogLevel.INFO, 'Time entry saved successfully');
-                resetTimer(); // Call resetTimer here, after successful save
-                loadTimeEntries();
-                visualizeProjectData();
-            };
+                request.onsuccess = function() {
+                    log(LogLevel.INFO, 'Time entry saved successfully');
+                    resetTimer();
+                    resolve();
+                };
 
-            request.onerror = function(event) {
-                log(LogLevel.ERROR, 'Error saving time entry:', event);
-                showError('Error saving time entry in database');
-            };
-        } else {
-            log(LogLevel.ERROR, 'No project associated with the timer');
-            showError('No project associated with the timer. Time entry not saved.');
-        }
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Database error:', error);
-        showError('Failed to load database when saving time entry');
+                request.onerror = function(event) {
+                    log(LogLevel.ERROR, 'Error saving time entry:', event);
+                    showError('Error saving time entry in database');
+                    reject(event);
+                };
+            } else {
+                log(LogLevel.ERROR, 'No project associated with the timer');
+                showError('No project associated with the timer. Time entry not saved.');
+                reject(new Error('No project associated with the timer'));
+            }
+        }).catch(error => {
+            log(LogLevel.ERROR, 'Database error:', error);
+            showError('Failed to load database when saving time entry');
+            reject(error);
+        });
     });
     log(LogLevel.DEBUG, 'End of saveTimeEntry');
 }
