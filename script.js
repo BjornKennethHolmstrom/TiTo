@@ -1,32 +1,29 @@
 // script.js
 
+// Define log levels
+const LogLevel = {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3
+};
+
+// Set the current log level (you would change this for production)
+let currentLogLevel = LogLevel.DEBUG;
+
+// Logging function
+function log(level, message, ...args) {
+    if (level >= currentLogLevel) {
+        const logMethod = level === LogLevel.ERROR ? console.error :
+                          level === LogLevel.WARN ? console.warn :
+                          level === LogLevel.INFO ? console.info :
+                          console.log;
+        logMethod(`[${new Date().toISOString()}] ${message}`, ...args);
+    }
+}
+
 // Global Variables
 let db;
-/*let dbReady = new Promise((resolve, reject) => {
-    let request = indexedDB.open('TimeTrackerDB', 1);
-
-    request.onerror = function(event) {
-        console.error('Error opening IndexedDB:', event);
-        reject('Failed to open IndexedDB');
-    };
-
-    request.onsuccess = function(event) {
-        db = event.target.result;
-        console.log('IndexedDB opened successfully');
-        resolve();
-    };
-
-    request.onupgradeneeded = function(event) {
-        db = event.target.result;
-        let projectStore = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
-        projectStore.createIndex('name', 'name', { unique: true });
-
-        let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
-        timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
-        timeEntryStore.createIndex('description', 'description', { unique: false });
-        console.log('IndexedDB upgrade completed');
-    };
-});*/
 let dbReady;
 
 let currentProject = null;
@@ -49,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }).then(() => {
         loadTimeEntries();
     }).catch(error => {
-        console.error('Error initializing app:', error);
+        log(LogLevel.ERROR, 'Error initializing app:', error);
         showError('Failed to initialize the app. Please refresh the page.');
     });
 });
@@ -59,13 +56,13 @@ function initializeDB() {
         let request = indexedDB.open('TimeTrackerDB', 1);
 
         request.onerror = function(event) {
-            console.error('Error opening IndexedDB:', event);
+            log(LogLevel.ERROR, 'Error opening IndexedDB:', event);
             reject('Failed to open IndexedDB');
         };
 
         request.onsuccess = function(event) {
             db = event.target.result;
-            console.log('IndexedDB opened successfully');
+            log(LogLevel.INFO, 'IndexedDB opened successfully');
             resolve();
         };
 
@@ -77,7 +74,7 @@ function initializeDB() {
             let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
             timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
             timeEntryStore.createIndex('description', 'description', { unique: false });
-            console.log('IndexedDB upgrade completed');
+            log(LogLevel.INFO, 'IndexedDB upgrade completed');
         };
     });
 }
@@ -198,7 +195,7 @@ function exportDatabase() {
             };
         };
     }).catch(error => {
-        console.error('Error exporting database:', error);
+        log(LogLevel.ERROR, 'Error exporting database:', error);
         showError('Failed to export database');
     });
 }
@@ -231,7 +228,7 @@ function importDatabase(event) {
                 data.timeEntries.forEach(entry => timeEntryStore.add(entry));
 
                 tx.oncomplete = function() {
-                    console.log('Database import completed');
+                    log(LogLevel.INFO, 'Database import completed');
                     loadProjects();
                     loadTimeEntries();
                     visualizeProjectData();
@@ -239,7 +236,7 @@ function importDatabase(event) {
                 };
             });
         } catch (error) {
-            console.error('Error importing database:', error);
+            log(LogLevel.ERROR, 'Error importing database:', error);
             showError('Failed to import database: ' + error.message);
         }
     };
@@ -272,12 +269,12 @@ function addProject() {
             };
 
             request.onerror = function(event) {
-                console.error('Error adding project:', event);
+                log(LogLevel.ERROR, 'Error adding project:', event);
                 showError('Failed to add project. It might already exist.');
             };
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to add project due to a database error.');
     });
 }
@@ -298,20 +295,20 @@ function loadProjects() {
         };
 
         request.onerror = function(event) {  // Add this error handler
-            console.error('Error loading projects:', event);
+            log(LogLevel.ERROR, 'Error loading projects:', event);
             showError('Error loading projects!');
         };
     }).catch(error => {
-        console.error('Database error in loadProjects:', error);
+        log(LogLevel.ERROR, 'Database error in loadProjects:', error);
         showError('Failed to load project due to a database error.');
     });
 }
 
 function renderProjectList(projects) {
-    console.log('Rendering projects:', projects);
+    log(LogLevel.INFO, 'Rendering projects:', projects);
     const projectListElement = document.getElementById('projectList');
     if (!projectListElement) {
-        console.error('Project list element not found');
+        log(LogLevel.ERROR, 'Project list element not found');
         showError('Project list element not found when rendering projects');
         return;
     }
@@ -395,7 +392,7 @@ function updateProjectName(projectId, newName) {
             if (project) {
                 project.name = newName;
                 store.put(project).onsuccess = function() {
-                    console.log('Project name updated successfully');
+                    log(LogLevel.INFO, 'Project name updated successfully');
                     if (currentProject && currentProject.id === projectId) {
                         currentProject.name = newName;
                     }
@@ -406,11 +403,11 @@ function updateProjectName(projectId, newName) {
         };
 
         request.onerror = function(event) {
-            console.error('Error updating project name:', event);
+            log(LogLevel.ERROR, 'Error updating project name:', event);
             showError('Error updating project name in database');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to update project name due to a database error');
     });
 }
@@ -487,17 +484,17 @@ function attachEventListeners(item) {
                     if (project) {
                         setCurrentProject(project);
                     } else {
-                        console.error('Project not found:', projectId);
+                        log(LogLevel.ERROR, 'Project not found:', projectId);
                         showError('Error: Project not found');
                     }
                 };
 
                 request.onerror = function(event) {
-                    console.error('Error retrieving project:', event);
+                    log(LogLevel.ERROR, 'Error retrieving project:', event);
                     showError('Error retrieving project from database');
                 };
             }).catch(error => {
-                console.error('Database error:', error);
+                log(LogLevel.ERROR, 'Database error:', error);
                 showError('Failed to access database when selecting project');
             });
         }
@@ -534,7 +531,7 @@ function updateProjectOrder() {
     const projectItems = document.querySelectorAll('#projectList li');
     const newOrder = Array.from(projectItems).map(item => parseInt(item.dataset.projectId));
     
-    console.log('New project order:', newOrder);
+    log(LogLevel.INFO, 'New project order:', newOrder);
     
     dbReady.then(() => {
         let transaction = db.transaction(['projects'], 'readwrite');
@@ -555,23 +552,24 @@ function updateProjectOrder() {
         };
 
         transaction.oncomplete = function() {
-            console.log('Project order updated in database');
+            log(LogLevel.INFO, 'Project order updated in database');
             // Refresh the chart after updating project order
             visualizeProjectData();
         };
 
         transaction.onerror = function(event) {
-            console.error('Error updating project order:', event.target.error);
+            log(LogLevel.ERROR, 'Error updating project order:', event.target.error);
             showError('Error updating project order in database');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to update project order due to a database error');
     });
 }
     
 
 function deleteProject(projectId) {
+    log(LogLevel.DEBUG, 'Start of deleteProject');
     if (confirm('Are you sure you want to delete this project? All associated time entries will also be deleted.')) {
         dbReady.then(() => {
             let transaction = db.transaction(['projects', 'timeEntries'], 'readwrite');
@@ -580,7 +578,7 @@ function deleteProject(projectId) {
 
             // Delete the project
             projectStore.delete(projectId).onsuccess = function() {
-                console.log('Project deleted');
+                log(LogLevel.INFO, 'Project deleted');
             };
 
             // Delete all time entries for this project
@@ -596,7 +594,7 @@ function deleteProject(projectId) {
             };
 
             transaction.oncomplete = function() {
-                console.log('Project and associated time entries deleted');
+                log(LogLevel.INFO, 'Project and associated time entries deleted');
                 if (currentProject && currentProject.id === projectId) {
                     currentProject = null;
                     resetTimer();
@@ -615,10 +613,11 @@ function deleteProject(projectId) {
                 }
             };
         }).catch(error => {
-            console.error('Database error:', error);
+            log(LogLevel.ERROR, 'Database error:', error);
             showError('Failed to delete project due to a database error');
         });
     }
+    log(LogLevel.DEBUG, 'End of deleteProject');
 }
 
 function clearTimeEntryList() {
@@ -639,7 +638,7 @@ function loadProjects() {
             let projects = event.target.result;
             // Sort projects by their order before rendering
             projects.sort((a, b) => (a.order || 0) - (b.order || 0));
-            console.log('Loaded projects:', projects);
+            log(LogLevel.INFO, 'Loaded projects:', projects);
             renderProjectList(projects);
             if (projects.length === 0) {
                 currentProject = null;
@@ -650,16 +649,17 @@ function loadProjects() {
         };
 
         request.onerror = function(event) {
-            console.error('Error loading projects:', event);
+            log(LogLevel.ERROR, 'Error loading projects:', event);
             showError('Error loading projects from database');
         };
     }).catch(error => {
-        console.error('Database error in loadProjects:', error);
+        log(LogLevel.ERROR, 'Database error in loadProjects:', error);
         showError('Failed to load projects due to a database error');
     });
 }
 
 function setCurrentProject(project) {
+    log(LogLevel.DEBUG, 'Before setCurrentProject');
     currentProject = project;
 
     const projectItems = document.querySelectorAll('#projectList li');
@@ -672,11 +672,12 @@ function setCurrentProject(project) {
 
     console.log('Current project set to:', project);
     loadTimeEntries().catch(error => {
-        console.error('Error loading time entries:', error);
+        log(LogLevel.ERROR, 'Error loading time entries:', error);
         showError('Failed to load time entries for the selected project');
     });
 
     updateTimerProjectDisplay();
+    log(LogLevel.DEBUG, 'After setCurrentProject');
 }
 
 function startTimerDisplayUpdate() {
@@ -696,7 +697,7 @@ function updateTimerProjectDisplay() {
                     const project = event.target.result;
                     if (project) {
                         timerProjectDisplay.textContent = `Timer running for: ${project.name}`;
-                        timerProjectDisplay.style.display = 'block'; // Make sure it's visible
+                        timerProjectDisplay.style.display = 'block';
                     } else {
                         timerProjectDisplay.textContent = 'Timer running for: Unknown project';
                         timerProjectDisplay.style.display = 'block';
@@ -704,14 +705,14 @@ function updateTimerProjectDisplay() {
                 };
 
                 request.onerror = function(event) {
-                    console.error('Error fetching timer project:', event);
+                    log(LogLevel.ERROR, 'Error fetching timer project:', event);
                     timerProjectDisplay.textContent = 'Timer running for: Unknown project';
                     timerProjectDisplay.style.display = 'block';
                 };
             });
         } else {
             timerProjectDisplay.textContent = '';
-            timerProjectDisplay.style.display = 'none'; // Hide when no timer is running
+            timerProjectDisplay.style.display = 'none';
         }
     }
 }
@@ -727,6 +728,7 @@ function togglePlayPause() {
 }
 
 function startTimer() {
+    log(LogLevel.DEBUG, 'Before startTimer');
     if (!currentProject) {
         alert('Please select a project first.');
         return;
@@ -734,17 +736,18 @@ function startTimer() {
     isTimerRunning = true;
     isPaused = false;
     startTime = Date.now();
-    timerProject = currentProject.id; // Store the project ID instead of the whole project
-    console.log('Timer started at:', new Date(startTime), 'for project ID:', timerProject);
+    timerProject = currentProject.id;
+    log(LogLevel.INFO, `Timer started at: ${new Date(startTime).toISOString()} for project ID: ${timerProject}`);
     timerInterval = setInterval(updateTimeDisplay, 1000);
     updatePlayPauseButton();
-    updateTimerProjectDisplay(); // Add this line to update the display immediately
+    updateTimerProjectDisplay();
+    log(LogLevel.DEBUG, 'After startTimer');
 }
 
 function pauseTimer() {
     isPaused = true;
     clearInterval(timerInterval);
-    console.log('Timer paused at:', new Date());
+    log(LogLevel.INFO, 'Timer paused at:', new Date());
     updatePlayPauseButton();
 }
 
@@ -752,11 +755,12 @@ function resumeTimer() {
     isPaused = false;
     startTime = Date.now() - elapsedTime;
     timerInterval = setInterval(updateTimeDisplay, 1000);
-    console.log('Timer resumed at:', new Date());
+    log(LogLevel.INFO, 'Timer resumed at:', new Date());
     updatePlayPauseButton();
 }
 
 function stopTimer() {
+    log(LogLevel.DEBUG, 'Start of stopTimer');
     if (isTimerRunning) {
         clearInterval(timerInterval);
         isTimerRunning = false;
@@ -764,8 +768,8 @@ function stopTimer() {
         
         let stopTime = Date.now();
         
-        console.log('Timer stopped at:', new Date(stopTime));
-        console.log('Elapsed time (ms):', elapsedTime);
+        log(LogLevel.INFO, 'Timer stopped at:', new Date(stopTime));
+        log(LogLevel.INFO, 'Elapsed time (ms):', elapsedTime);
         
         if (timerProject !== null) {
             // Check if the timerProject still exists
@@ -779,34 +783,34 @@ function stopTimer() {
                     if (project) {
                         // Project still exists, save the time entry
                         saveTimeEntry(startTime, stopTime);
-                        console.log('Time entry saved for project:', project.name);
+                        log(LogLevel.INFO, 'Time entry saved for project:', project.name);
                     } else {
-                        console.log('Project was deleted while timer was running. Time entry not saved.');
+                        log(LogLevel.INFO, 'Project was deleted while timer was running. Time entry not saved.');
                         showError('The project was deleted while the timer was running. Time entry not saved.');
                     }
-                    resetTimer();
                     loadTimeEntries();
                     scrollToBottom(document.getElementById('timeEntryList'));
                 };
 
                 request.onerror = function(event) {
-                    console.error('Error checking project existence:', event);
+                    log(LogLevel.ERROR, 'Error checking project existence:', event);
                     showError('Error checking project existence. Time entry not saved.');
                     resetTimer();
                 };
             }).catch(error => {
-                console.error('Database error:', error);
+                log(LogLevel.ERROR, 'Database error:', error);
                 showError('Failed to access database when stopping timer');
                 resetTimer();
             });
         } else {
-            console.log('No project associated with the timer. Time entry not saved.');
+            log(LogLevel.INFO, 'No project associated with the timer. Time entry not saved.');
             showError('No project associated with the timer. Time entry not saved.');
             resetTimer();
         }
     } else {
         alert("No timer is currently running.");
     }
+    log(LogLevel.DEBUG, 'End of stopTimer');
 }
 
 function updatePlayPauseButton() {
@@ -829,15 +833,20 @@ function updateTimeDisplay() {
     }
 }
 
+
 function resetTimer() {
+    //console.log('resetTimer called from:', new Error().stack);
+    log(LogLevel.DEBUG, 'Start of resetTimer');
     elapsedTime = 0;
     startTime = null;
     isTimerRunning = false;
     isPaused = false;
-    timerProject = null; // Reset the timer project
+    timerProject = null;
     clearInterval(timerInterval);
     document.getElementById('timeDisplay').textContent = '00:00:00';
     updatePlayPauseButton();
+    updateTimerProjectDisplay();
+    log(LogLevel.DEBUG, 'End of resetTimer');
 }
 
 function formatDuration(duration) {
@@ -849,11 +858,11 @@ function formatDuration(duration) {
 
 function loadTimeEntries() {
     if (!currentProject) {
-        console.log('No current project, not loading time entries');
+        log(LogLevel.INFO, 'No current project, not loading time entries');
         return Promise.resolve();
     }
 
-    console.log('Loading time entries for project:', currentProject);
+    log(LogLevel.INFO, 'Loading time entries for project:', currentProject);
 
     return dbReady.then(() => {
         return new Promise((resolve, reject) => {
@@ -864,7 +873,7 @@ function loadTimeEntries() {
 
             request.onsuccess = function(event) {
                 const timeEntries = event.target.result;
-                console.log('Loaded time entries:', timeEntries);
+                log(LogLevel.INFO, 'Loaded time entries', timeEntries);
                 
                 // Sort time entries based on current sort order
                 timeEntries.sort((a, b) => {
@@ -881,7 +890,7 @@ function loadTimeEntries() {
             };
 
             request.onerror = function(event) {
-                console.error('Error loading time entries:', event);
+                log(LogLevel.ERROR, 'Error loading time entries:', event);
                 reject('Error loading time entries from database');
             };
         });
@@ -917,7 +926,7 @@ function sortTimeEntries(order) {
             });
 
             transaction.oncomplete = function() {
-                console.log(`Time entries sorted ${order} first and order updated in database`);
+                log(LogLevel.INFO, `Time entries sorted ${order} first and order updated in database`);
                 renderTimeEntryList(timeEntries);
                 
                 // Scroll to top if sorting newest first, otherwise scroll to bottom
@@ -931,11 +940,11 @@ function sortTimeEntries(order) {
         };
 
         request.onerror = function(event) {
-            console.error('Error retrieving time entries for sorting:', event);
+            log(LogLevel.ERROR, 'Error retrieving time entries for sorting:', event);
             showError('Error sorting time entries');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to sort time entries due to a database error');
     });
 }
@@ -1000,10 +1009,34 @@ function renderTimeEntryList(timeEntries) {
         listItem.appendChild(removeButton);
 
         // Add drag and drop event listeners
-        listItem.addEventListener('dragstart', handleTimeEntryDragStart);
+        listItem.addEventListener('dragstart', function(e) {
+            // Check if the target is an input or the description
+            if (e.target.tagName === 'INPUT' || e.target.classList.contains('description-input')) {
+                e.preventDefault();
+                return false;
+            }
+            handleTimeEntryDragStart.call(this, e);
+        });
         listItem.addEventListener('dragover', handleTimeEntryDragOver);
         listItem.addEventListener('drop', handleTimeEntryDrop);
         listItem.addEventListener('dragend', handleTimeEntryDragEnd);
+
+        // Add mousedown event to prevent dragging when selecting text
+        listItem.addEventListener('mousedown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.classList.contains('description-input')) {
+                e.stopPropagation();
+                listItem.draggable = false;
+            } else {
+                listItem.draggable = true;
+            }
+        });
+
+        // Reset draggable on mouseup
+        listItem.addEventListener('mouseup', function() {
+            setTimeout(() => {
+                listItem.draggable = true;
+            }, 0);
+        });
 
         timeEntryListElement.appendChild(listItem);
 
@@ -1090,10 +1123,32 @@ function attachTimeEntryEventListeners(item) {
         }
     });
 
-    item.addEventListener('dragstart', handleTimeEntryDragStart);
+    item.addEventListener('dragstart', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.classList.contains('description-input')) {
+            e.preventDefault();
+            return false;
+        }
+        handleTimeEntryDragStart.call(this, e);
+    });
+
     item.addEventListener('dragover', handleTimeEntryDragOver);
     item.addEventListener('drop', handleTimeEntryDrop);
     item.addEventListener('dragend', handleTimeEntryDragEnd);
+
+    item.addEventListener('mousedown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.classList.contains('description-input')) {
+            e.stopPropagation();
+            item.draggable = false;
+        } else {
+            item.draggable = true;
+        }
+    });
+
+    item.addEventListener('mouseup', function() {
+        setTimeout(() => {
+            item.draggable = true;
+        }, 0);
+    });
 }
 
 function updateTimeEntryOrder() {
@@ -1124,15 +1179,15 @@ function updateTimeEntryOrder() {
         };
 
         transaction.oncomplete = function() {
-            console.log('Time entry order updated in database');
+            log(LogLevel.INFO, 'Time entry order updated in database');
         };
 
         transaction.onerror = function(event) {
-            console.error('Error updating time entry order:', event.target.error);
+            log(LogLevel.ERROR, 'Error updating time entry order:', event.target.error);
             showError('Error updating time entry order in database');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to update time entry order due to a database error');
     });
 }
@@ -1215,16 +1270,16 @@ function updateTimeEntry(id, listItem) {
             entry.duration = duration;
 
             store.put(entry).onsuccess = function() {
-                console.log('Time entry updated successfully');
+                log(LogLevel.INFO, 'Time entry updated successfully');
                 visualizeProjectData();
             };
         };
         request.onerror = function(event) {
-            console.error('Error updating time entry:', event);
+            log(LogLevel.ERROR, 'Error updating time entry:', event);
             showError('Error updating time entry in database');
         };
     }).catch(error => {
-        console.error('Database error in updateTimeEntry:', error);
+        log(LogLevel.ERROR, 'Database error in updateTimeEntry:', error);
         showError('Failed to load database when updating time entry');
     });
 }
@@ -1247,20 +1302,21 @@ function updateTimeEntryDescription(id, description) {
             entry.description = description;
 
             store.put(entry).onsuccess = function() {
-                console.log('Time entry description updated successfully');
+                log(LogLevel.INFO, 'Time entry description updated successfully');
             };
         };
         request.onerror = function(event) {
-            console.error('Error updating time entry description:', event);
+            log(LogLevel.ERROR, 'Database error in updateTimeEntryDescription:', error);
             showError('Error updating time entry description to database');
         };
     }).catch(error => {
-        console.error('Database error in updateTimeEntryDescription:', error);
+        log(LogLevel.ERROR, 'Database error in updateTimeEntryDescription:', error);
         showError('Failed to load database when updating time entry description');
     });
 }
 
 function saveTimeEntry(startTime, endTime) {
+    log(LogLevel.DEBUG, 'Start of saveTimeEntry');
     dbReady.then(() => {
         if (timerProject !== null) {
             let transaction = db.transaction(['timeEntries'], 'readwrite');
@@ -1274,34 +1330,30 @@ function saveTimeEntry(startTime, endTime) {
                 description: ''
             };
 
-            console.log('Saving time entry:', entry);
-            console.log('Start:', new Date(startTime));
-            console.log('End:', new Date(endTime));
-            console.log('Duration:', formatDuration(entry.duration));
-            console.log('Elapsed time (ms):', entry.duration);
+            log(LogLevel.INFO, 'Saving time entry', entry);
 
             let request = store.add(entry);
 
             request.onsuccess = function() {
-                console.log('Time entry saved successfully');
-                if (currentProject && currentProject.id === timerProject) {
-                    loadTimeEntries(); // Refresh time entries only if the current project matches the timer project
-                }
+                log(LogLevel.INFO, 'Time entry saved successfully');
+                resetTimer(); // Call resetTimer here, after successful save
+                loadTimeEntries();
                 visualizeProjectData();
             };
 
             request.onerror = function(event) {
-                console.error('Error saving time entry:', event);
+                log(LogLevel.ERROR, 'Error saving time entry:', event);
                 showError('Error saving time entry in database');
             };
         } else {
-            console.error('No project associated with the timer');
+            log(LogLevel.ERROR, 'No project associated with the timer');
             showError('No project associated with the timer. Time entry not saved.');
         }
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to load database when saving time entry');
     });
+    log(LogLevel.DEBUG, 'End of saveTimeEntry');
 }
 
 
@@ -1318,11 +1370,11 @@ function removeTimeEntry(id) {
         };
 
         request.onerror = function(event) {
-            console.error('Error removing time entry:', event);
+            log(LogLevel.ERROR, 'Error removing time entry:', event);
             showError('Error removing time entry from database');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to open database when removing time entry');
     });
 }
@@ -1367,11 +1419,11 @@ function addManualEntry() {
         };
 
         request.onerror = function(event) {
-            console.error('Error adding manual time entry:', event);
+            log(LogLevel.ERROR, 'Error adding manual time entry:', event);
             showError('Error adding manual time entry to database');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to open database when adding manual entry');
     });
 }
@@ -1389,11 +1441,11 @@ function visualizeProjectData() {
         };
 
         request.onerror = function(event) {
-            console.error('Error fetching time entries for visualization:', event);
+            log(LogLevel.ERROR, 'Error fetching time entries for visualization:', event);
             showError('Failed to fetch data for visualization.');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to visualize data due to a database error.');
     });
 }
@@ -1480,11 +1532,11 @@ function renderProjectChart(projectTotals) {
         };
 
         request.onerror = function(event) {
-            console.error('Error fetching projects for chart:', event);
+            log(LogLevel.ERROR, 'Error fetching projects for chart:', event);
             showError('Failed to fetch project data for chart.');
         };
     }).catch(error => {
-        console.error('Database error:', error);
+        log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to render chart due to a database error.');
     });
 }
@@ -1510,28 +1562,33 @@ function clearDatabase() {
             };
 
             transaction.onerror = function(event) {
-                console.error('Error clearing database:', event.target.errorCode);
+                log(LogLevel.ERROR, 'Error clearing database:', event.target.errorCode);
                 showError('Error clearing database');
             };
         }).catch(error => {
-            console.error('Error clearing database:', error);
+            log(LogLevel.ERROR, "Error clearing database");
             showError('Error opening database for clearing');
         });
     }
 }
 
-// Add this function to help with debugging
-function logTimerState() {
-    console.log('Timer State:');
-    console.log('isTimerRunning:', isTimerRunning);
-    console.log('isPaused:', isPaused);
-    console.log('timerProject:', timerProject);
-    console.log('currentProject:', currentProject ? currentProject.id : 'None');
-    console.log('startTime:', startTime);
-    console.log('elapsedTime:', elapsedTime);
+
+function setTimerProject(projectId) {
+    log(LogLevel.INFO, `Setting timerProject to: ${projectId}`);
+    timerProject = projectId;
 }
-// Call this function at key points in your code, such as:
-// - At the end of startTimer()
-// - At the beginning and end of stopTimer()
-// - At the beginning of setCurrentProject()
+
+
+// Add this utility function to help with debugging
+/*function addStackTraceToFunction(func, funcName) {
+    return function(...args) {
+        console.log(`${funcName} called from:`, new Error().stack);
+        return func.apply(this, args);
+    };
+}*/
+
+// Wrap key functions with stack trace logging
+//stopTimer = addStackTraceToFunction(stopTimer, 'stopTimer');
+//saveTimeEntry = addStackTraceToFunction(saveTimeEntry, 'saveTimeEntry');
+//resetTimer = addStackTraceToFunction(resetTimer, 'resetTimer');
 
