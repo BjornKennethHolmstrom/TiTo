@@ -868,12 +868,12 @@ function stopTimer() {
         clearInterval(timerInterval);
         isTimerRunning = false;
         isPaused = false;
-        
+
         let stopTime = Date.now();
-        
+
         log(LogLevel.INFO, 'Timer stopped at:', new Date(stopTime));
         log(LogLevel.INFO, 'Elapsed time (ms):', elapsedTime);
-        
+
         if (timerProject !== null) {
             // Check if the timerProject still exists
             dbReady.then(() => {
@@ -886,9 +886,10 @@ function stopTimer() {
                     if (project) {
                         // Project still exists, save the time entry
                         saveTimeEntry(startTime, stopTime).then(() => {
+                            currentPage = 1; // Reset to first page
                             loadTimeEntries().then(() => {
                                 const timeEntryList = document.getElementById('timeEntryList');
-                                timeEntryList.scrollTop = 0;
+                                timeEntryList.scrollTop = 0; // Scroll to top
                             });
                         });
                         log(LogLevel.INFO, 'Time entry saved for project:', project.name);
@@ -980,6 +981,9 @@ function loadTimeEntries() {
             request.onsuccess = function(event) {
                 const allTimeEntries = event.target.result;
                 totalPages = Math.ceil(allTimeEntries.length / entriesPerPage);
+
+                // Ensure currentPage is within bounds
+                currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
                 // Sort all entries by start time (newest first)
                 allTimeEntries.sort((a, b) => new Date(b.start) - new Date(a.start));
