@@ -53,6 +53,17 @@
                     <button id="addManualEntryButton">Add Manual Entry</button>
                     <button id="removeAllEntriesButton" class="red-button">Remove All Entries</button>
                 </div>
+                <div class="entries-per-page-container">
+                    <label for="entriesPerPageSelect">Entries per page:</label>
+                    <select id="entriesPerPageSelect">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="custom">Custom</option>
+                        <option value="all">All</option>
+                    </select>
+                    <input type="number" id="customEntriesPerPage" min="1" style="display: none;">
+                </div>
                 <ul id="timeEntryList"></ul>
                 <div class="pagination-controls">
                     <button id="firstPageButton" title="First Page">|<<</button>

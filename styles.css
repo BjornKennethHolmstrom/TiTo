@@ -392,9 +392,9 @@ li button {
 }
 
 .entries-per-page-container {
+    margin-bottom: 15px;
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
 }
 
 .entries-per-page-container label {

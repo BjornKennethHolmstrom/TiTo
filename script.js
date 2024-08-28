@@ -38,6 +38,7 @@ let projectChart = null;
 let currentSortOrder = 'newest'; // Default sort order
 let currentPage = 1;
 let entriesPerPage = 10;
+let isAllEntries = false;
 let totalPages = 1;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -45,15 +46,17 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeUI();
     startTimerDisplayUpdate();
 
-    dbReady.then(() => {
-        return loadProjects();
-    }).then(() => {
-        loadTimeEntries();
-//        visualizeProjectData(); //remove comment if charts not shown initally
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Error initializing app:', error);
-        showError('Failed to initialize the app. Please refresh the page.');
-    });
+    dbReady
+        .then(() => loadProjects())
+        .then(() => {
+            if (currentProject) {
+                return loadTimeEntries();
+            }
+        })
+        .catch(error => {
+            log(LogLevel.ERROR, 'Error initializing app:', error);
+            showError('Failed to initialize the app. Please refresh the page.');
+        });
 });
 
 function initializeDB() {
@@ -146,7 +149,40 @@ function initializeUI() {
     document.getElementById('nextPageButton').addEventListener('click', goToNextPage);
     document.getElementById('lastPageButton').addEventListener('click', goToLastPage);
 
+    const entriesPerPageSelect = document.getElementById('entriesPerPageSelect');
+    const customEntriesPerPage = document.getElementById('customEntriesPerPage');
 
+    if (entriesPerPageSelect) {
+        entriesPerPageSelect.addEventListener('change', function() {
+            const selectedValue = this.value;
+            if (selectedValue === 'custom') {
+                customEntriesPerPage.style.display = 'inline-block';
+                customEntriesPerPage.value = entriesPerPage;
+            } else {
+                customEntriesPerPage.style.display = 'none';
+                if (selectedValue === 'all') {
+                    isAllEntries = true;
+                } else {
+                    isAllEntries = false;
+                    entriesPerPage = parseInt(selectedValue, 10);
+                }
+                currentPage = 1;
+                loadTimeEntries();
+            }
+        });
+    }
+
+    if (customEntriesPerPage) {
+        customEntriesPerPage.addEventListener('change', function() {
+            const customValue = parseInt(this.value, 10);
+            if (customValue > 0) {
+                entriesPerPage = customValue;
+                isAllEntries = false;
+                currentPage = 1;
+                loadTimeEntries();
+            }
+        });
+    }
 
     const chartTabs = document.querySelectorAll('.chart-tab');
     const chartSections = document.querySelectorAll('.chart-section');
@@ -389,11 +425,17 @@ function loadProjects() {
         let request = store.getAll();
 
         request.onsuccess = function(event) {
-            const projects = event.target.result;
-            console.log('Loaded projects:', projects);  // Add this line
+            let projects = event.target.result;
+            projects.sort((a, b) => (a.order || 0) - (b.order || 0)); // Sort by order
             renderProjectList(projects);
-            if (projects.length === 1) {
+            
+            if (projects.length === 0) {
+                currentProject = null;
+                clearTimeEntryList();
+            } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
                 setCurrentProject(projects[0]);
+            } else {
+                loadTimeEntries();  // Add this to ensure time entries are loaded
             }
         };
 
@@ -730,34 +772,36 @@ function clearTimeEntryList() {
     }
 }
     
-// We also need to modify the loadProjects function to respect the order
 function loadProjects() {
-    dbReady.then(() => {
-        let transaction = db.transaction(['projects'], 'readonly');
-        let store = transaction.objectStore('projects');
-        let request = store.getAll();
+    return dbReady.then(() => {
+        return new Promise((resolve, reject) => {
+            let transaction = db.transaction(['projects'], 'readonly');
+            let store = transaction.objectStore('projects');
+            let request = store.getAll();
 
-        request.onsuccess = function(event) {
-            let projects = event.target.result;
-            // Sort projects by their order before rendering
-            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
-            log(LogLevel.INFO, 'Loaded projects:', projects);
-            renderProjectList(projects);
-            if (projects.length === 0) {
-                currentProject = null;
-                clearTimeEntryList();
-            } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
-                setCurrentProject(projects[0]);
-            }
-        };
+            request.onsuccess = function(event) {
+                let projects = event.target.result;
+                projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+                log(LogLevel.INFO, 'Loaded projects:', projects);
+                renderProjectList(projects);
+                if (projects.length === 0) {
+                    currentProject = null;
+                    clearTimeEntryList();
+                } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
+                    setCurrentProject(projects[0]);
+                }
+                resolve();
+            };
 
-        request.onerror = function(event) {
-            log(LogLevel.ERROR, 'Error loading projects:', event);
-            showError('Error loading projects from database');
-        };
+            request.onerror = function(event) {
+                log(LogLevel.ERROR, 'Error loading projects:', event);
+                reject('Error loading projects from database');
+            };
+        });
     }).catch(error => {
         log(LogLevel.ERROR, 'Database error in loadProjects:', error);
         showError('Failed to load projects due to a database error');
+        throw error; // Re-throw the error to be caught in the main chain
     });
 }
 
@@ -774,7 +818,8 @@ function setCurrentProject(project) {
     }
 
     console.log('Current project set to:', project);
-    loadTimeEntries().catch(error => {
+
+    return loadTimeEntries().catch(error => {
         log(LogLevel.ERROR, 'Error loading time entries:', error);
         showError('Failed to load time entries for the selected project');
     });
@@ -980,18 +1025,26 @@ function loadTimeEntries() {
 
             request.onsuccess = function(event) {
                 const allTimeEntries = event.target.result;
-                totalPages = Math.ceil(allTimeEntries.length / entriesPerPage);
-
-                // Ensure currentPage is within bounds
-                currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
                 // Sort all entries by start time (newest first)
                 allTimeEntries.sort((a, b) => new Date(b.start) - new Date(a.start));
 
-                // Get entries for the current page
-                const startIndex = (currentPage - 1) * entriesPerPage;
-                const endIndex = startIndex + entriesPerPage;
-                const timeEntries = allTimeEntries.slice(startIndex, endIndex);
+                let timeEntries;
+                if (isAllEntries === undefined) {
+                    isAllEntries = false; // Set a default value if it's not defined
+                }
+
+                if (isAllEntries) {
+                    timeEntries = allTimeEntries;
+                    totalPages = 1;
+                    currentPage = 1;
+                } else {
+                    totalPages = Math.ceil(allTimeEntries.length / entriesPerPage);
+                    currentPage = Math.max(1, Math.min(currentPage, totalPages));
+                    const startIndex = (currentPage - 1) * entriesPerPage;
+                    const endIndex = startIndex + entriesPerPage;
+                    timeEntries = allTimeEntries.slice(startIndex, endIndex);
+                }
 
                 renderTimeEntryList(timeEntries);
                 updatePaginationControls();
@@ -1014,13 +1067,18 @@ function updatePaginationControls() {
     const nextPageButton = document.getElementById('nextPageButton');
     const lastPageButton = document.getElementById('lastPageButton');
     const pageIndicator = document.getElementById('pageIndicator');
+    const paginationControls = document.querySelector('.pagination-controls');
 
-    firstPageButton.disabled = currentPage === 1;
-    prevPageButton.disabled = currentPage === 1;
-    nextPageButton.disabled = currentPage === totalPages;
-    lastPageButton.disabled = currentPage === totalPages;
-
-    pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+    if (isAllEntries) {
+        paginationControls.style.display = 'none';
+    } else {
+        paginationControls.style.display = 'flex';
+        firstPageButton.disabled = currentPage === 1;
+        prevPageButton.disabled = currentPage === 1;
+        nextPageButton.disabled = currentPage === totalPages;
+        lastPageButton.disabled = currentPage === totalPages;
+        pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+    }
 }
 
 function goToFirstPage() {
