@@ -355,70 +355,70 @@ li button {
     margin-bottom: 20px;
 }
 
+.button-container button {
+    flex: 1;
+    padding: 10px 15px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 #addManualEntryButton {
     background-color: #4CAF50;
     color: white;
-    border: none;
-    padding: 10px 15px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 14px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
-    flex: 1;
 }
 
 #addManualEntryButton:hover {
     background-color: #45a049;
 }
 
-#sortNewestFirstButton,
-#sortOldestFirstButton {
-    background-color: #3498db;
+#removeAllEntriesButton {
+    background-color: #7B0323;
     color: white;
-    border: none;
-    padding: 10px 15px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 14px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.3s ease, transform 0.1s ease;
-    flex: 1;
-    opacity: 0.7; /* Slightly faded when not active */
 }
 
-#sortNewestFirstButton:hover,
-#sortOldestFirstButton:hover {
-    opacity: 0.9;
+#removeAllEntriesButton:hover {
+    background-color: #5E0219;
 }
 
-#sortNewestFirstButton.pressed,
-#sortOldestFirstButton.pressed {
-    background-color: #2980b9;
-    transform: scale(0.98);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-    opacity: 1; /* Full opacity when active */
+#removeAllEntriesButton:active {
+    background-color: #410111;
 }
 
-#sortOldestFirstButton {
-    background-color: #e74c3c;
+.entries-per-page-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
-#sortOldestFirstButton:hover {
-    background-color: #c0392b;
+.entries-per-page-container label {
+    margin-right: 10px;
 }
 
-#sortOldestFirstButton.pressed {
-    background-color: #c0392b;
+#entriesPerPageSelect {
+    padding: 5px;
+    margin-right: 10px;
+}
+
+#customEntriesPerPage {
+    width: 60px;
+    padding: 5px;
 }
 
 @media (max-width: 768px) {
     .button-container {
         flex-direction: column;
+    }
+
+    .button-container button {
+        width: 100%;
+        margin-bottom: 10px;
     }
 }
 
@@ -586,22 +586,36 @@ input[name$="-time"] {
     background-color: #a93226; /* Even darker red when pressed */
 }
 
-#addManualEntryButton {
-    margin-bottom: 10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 4px;
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
 }
 
-#addManualEntryButton:hover {
-    background-color: #45a049;
+.pagination-controls button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.pagination-controls button:hover {
+    background-color: #0056b3;
+}
+
+.pagination-controls button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+#pageIndicator {
+    margin: 0 10px;
+    font-weight: bold;
 }
 
 .chart-container {

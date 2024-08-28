@@ -47,15 +47,21 @@
 
         <!-- Right Column: Time Entries -->
         <div class="column">
-          <div class="section time-entries-section">
-            <h2>Time Entries</h2>
-            <div class="button-container">
-              <button id="addManualEntryButton">Add Manual Entry</button>
-              <button id="sortNewestFirstButton">Sort Newest First</button>
-              <button id="sortOldestFirstButton">Sort Oldest First</button>
+            <div class="section time-entries-section">
+                <h2>Time Entries</h2>
+                <div class="button-container">
+                    <button id="addManualEntryButton">Add Manual Entry</button>
+                    <button id="removeAllEntriesButton" class="red-button">Remove All Entries</button>
+                </div>
+                <ul id="timeEntryList"></ul>
+                <div class="pagination-controls">
+                    <button id="firstPageButton" title="First Page">|<<</button>
+                    <button id="prevPageButton" title="Previous Page"><</button>
+                    <span id="pageIndicator">Page 1 of 1</span>
+                    <button id="nextPageButton" title="Next Page">></button>
+                    <button id="lastPageButton" title="Last Page">>>|</button>
+                </div>
             </div>
-            <ul id="timeEntryList"></ul>
-          </div>
         </div>
         <div class="chart-container">
           <div class="chart-tabs">

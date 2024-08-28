@@ -94,7 +94,10 @@ Known Limitations
 
 Future Plans
 - Clear all entries-button for time list entries
+- Pages for browsing time entries
 - More data visualization and reporting features
+- Dark mode
+- Multi-lingual support
 
 License
 See the included file named LICENSE

@@ -36,6 +36,9 @@ let timerInterval;
 let timerProject = null;
 let projectChart = null;
 let currentSortOrder = 'newest'; // Default sort order
+let currentPage = 1;
+let entriesPerPage = 10;
+let totalPages = 1;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeDB();
@@ -133,25 +136,17 @@ function initializeUI() {
         importFileInput.addEventListener('change', importDatabase);
     }
 
-    const sortNewestFirstButton = document.getElementById('sortNewestFirstButton');
-    const sortOldestFirstButton = document.getElementById('sortOldestFirstButton');
-
-    if (sortNewestFirstButton) {
-        sortNewestFirstButton.addEventListener('click', () => {
-            sortTimeEntries('newest');
-            updateSortButtonStates('newest');
-        });
+    const removeAllEntriesButton = document.getElementById('removeAllEntriesButton');
+    if (removeAllEntriesButton) {
+        removeAllEntriesButton.addEventListener('click', removeAllTimeEntries);
     }
 
-    if (sortOldestFirstButton) {
-        sortOldestFirstButton.addEventListener('click', () => {
-            sortTimeEntries('oldest');
-            updateSortButtonStates('oldest');
-        });
-    }
+    document.getElementById('firstPageButton').addEventListener('click', goToFirstPage);
+    document.getElementById('prevPageButton').addEventListener('click', goToPrevPage);
+    document.getElementById('nextPageButton').addEventListener('click', goToNextPage);
+    document.getElementById('lastPageButton').addEventListener('click', goToLastPage);
 
-    // Set initial button state
-    updateSortButtonStates(currentSortOrder);
+
 
     const chartTabs = document.querySelectorAll('.chart-tab');
     const chartSections = document.querySelectorAll('.chart-section');
@@ -273,21 +268,6 @@ function initializeUI() {
     } else {
         log(LogLevel.WARN, 'Quick date range select not found');
     }
-}
-
-function updateSortButtonStates(activeOrder) {
-    const newestButton = document.getElementById('sortNewestFirstButton');
-    const oldestButton = document.getElementById('sortOldestFirstButton');
-
-    if (activeOrder === 'newest') {
-        newestButton.classList.add('pressed');
-        oldestButton.classList.remove('pressed');
-    } else {
-        oldestButton.classList.add('pressed');
-        newestButton.classList.remove('pressed');
-    }
-
-    currentSortOrder = activeOrder;
 }
 
 function exportDatabase() {
@@ -907,13 +887,8 @@ function stopTimer() {
                         // Project still exists, save the time entry
                         saveTimeEntry(startTime, stopTime).then(() => {
                             loadTimeEntries().then(() => {
-                                // Scroll to top or bottom based on sort order
                                 const timeEntryList = document.getElementById('timeEntryList');
-                                if (currentSortOrder === 'newest') {
-                                    timeEntryList.scrollTop = 0;
-                                } else {
-                                    scrollToBottom(timeEntryList);
-                                }
+                                timeEntryList.scrollTop = 0;
                             });
                         });
                         log(LogLevel.INFO, 'Time entry saved for project:', project.name);
@@ -1003,28 +978,20 @@ function loadTimeEntries() {
             let request = index.getAll(currentProject.id);
 
             request.onsuccess = function(event) {
-                const timeEntries = event.target.result;
-                log(LogLevel.INFO, 'Loaded time entries', timeEntries);
-                
-                // Sort time entries based on current sort order
-                timeEntries.sort((a, b) => {
-                    if (currentSortOrder === 'newest') {
-                        return new Date(b.start) - new Date(a.start);
-                    } else {
-                        return new Date(a.start) - new Date(b.start);
-                    }
-                });
-                
-                renderTimeEntryList(timeEntries);
-                visualizeProjectData();
+                const allTimeEntries = event.target.result;
+                totalPages = Math.ceil(allTimeEntries.length / entriesPerPage);
 
-                // Scroll to top or bottom based on sort order
-                const timeEntryList = document.getElementById('timeEntryList');
-                if (currentSortOrder === 'newest') {
-                    timeEntryList.scrollTop = 0;
-                } else {
-                    scrollToBottom(timeEntryList);
-                }
+                // Sort all entries by start time (newest first)
+                allTimeEntries.sort((a, b) => new Date(b.start) - new Date(a.start));
+
+                // Get entries for the current page
+                const startIndex = (currentPage - 1) * entriesPerPage;
+                const endIndex = startIndex + entriesPerPage;
+                const timeEntries = allTimeEntries.slice(startIndex, endIndex);
+
+                renderTimeEntryList(timeEntries);
+                updatePaginationControls();
+                visualizeProjectData(allTimeEntries);
 
                 resolve();
             };
@@ -1037,57 +1004,49 @@ function loadTimeEntries() {
     });
 }
 
-function sortTimeEntries(order) {
-    if (!currentProject) {
-        showError('Please select a project first.');
-        return;
-    }
+function updatePaginationControls() {
+    const firstPageButton = document.getElementById('firstPageButton');
+    const prevPageButton = document.getElementById('prevPageButton');
+    const nextPageButton = document.getElementById('nextPageButton');
+    const lastPageButton = document.getElementById('lastPageButton');
+    const pageIndicator = document.getElementById('pageIndicator');
 
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-        let index = store.index('projectId');
-        let request = index.getAll(currentProject.id);
+    firstPageButton.disabled = currentPage === 1;
+    prevPageButton.disabled = currentPage === 1;
+    nextPageButton.disabled = currentPage === totalPages;
+    lastPageButton.disabled = currentPage === totalPages;
 
-        request.onsuccess = function(event) {
-            let timeEntries = event.target.result;
-            
-            // Sort time entries by start time
-            timeEntries.sort((a, b) => {
-                const dateA = new Date(a.start);
-                const dateB = new Date(b.start);
-                return order === 'newest' ? dateB - dateA : dateA - dateB;
-            });
-            
-            // Update order in the database
-            timeEntries.forEach((entry, index) => {
-                entry.order = index;
-                store.put(entry);
-            });
-
-            transaction.oncomplete = function() {
-                log(LogLevel.INFO, `Time entries sorted ${order} first and order updated in database`);
-                renderTimeEntryList(timeEntries);
-                
-                // Scroll to top if sorting newest first, otherwise scroll to bottom
-                const timeEntryList = document.getElementById('timeEntryList');
-                if (order === 'newest') {
-                    timeEntryList.scrollTop = 0;
-                } else {
-                    scrollToBottom(timeEntryList);
-                }
-            };
-        };
-
-        request.onerror = function(event) {
-            log(LogLevel.ERROR, 'Error retrieving time entries for sorting:', event);
-            showError('Error sorting time entries');
-        };
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Database error:', error);
-        showError('Failed to sort time entries due to a database error');
-    });
+    pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
 }
+
+function goToFirstPage() {
+    if (currentPage !== 1) {
+        currentPage = 1;
+        loadTimeEntries();
+    }
+}
+
+function goToPrevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadTimeEntries();
+    }
+}
+
+function goToNextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        loadTimeEntries();
+    }
+}
+
+function goToLastPage() {
+    if (currentPage !== totalPages) {
+        currentPage = totalPages;
+        loadTimeEntries();
+    }
+}
+
 function renderTimeEntryList(timeEntries) {
 //     timeEntries.sort((a, b) => a.order - b.order);
 
@@ -1186,10 +1145,6 @@ function renderTimeEntryList(timeEntries) {
         });
         descriptionInput.addEventListener('input', () => updateTimeEntryDescription(entry.id, descriptionInput.value));
     });
-}
-
-function scrollToBottom(element) {
-    element.scrollTop = element.scrollHeight;
 }
 
 function handleTimeEntryDragStart(e) {
@@ -1509,7 +1464,12 @@ function removeTimeEntry(id) {
 
         request.onsuccess = function() {
             console.log('Time entry removed');
-            loadTimeEntries(); // Reload the time entries after removal
+            loadTimeEntries().then(() => {
+                if (document.getElementById('timeEntryList').children.length === 0 && currentPage > 1) {
+                    currentPage--;
+                    loadTimeEntries();
+                }
+            });
             visualizeProjectData();
         };
 
@@ -1536,7 +1496,6 @@ function addManualEntry() {
         end: now.toISOString(),
         duration: 0,
         description: '',
-        order: currentSortOrder === 'newest' ? -1 : Number.MAX_SAFE_INTEGER // Set order based on current sort
     };
 
     console.log('Adding manual entry:', entry);
@@ -1549,15 +1508,10 @@ function addManualEntry() {
 
         request.onsuccess = function(event) {
             console.log('Manual time entry added successfully');
+            currentPage = 1; // Reset to first page
             loadTimeEntries().then(() => {
                 const timeEntryList = document.getElementById('timeEntryList');
-                if (currentSortOrder === 'oldest') {
-                    // Scroll to bottom only when sorted oldest first
-                    scrollToBottom(timeEntryList);
-                } else {
-                    // Scroll to top when sorted newest first
-                    timeEntryList.scrollTop = 0;
-                }
+                timeEntryList.scrollTop = 0; // Scroll to top of the list
             });
             visualizeProjectData();
         };
@@ -1572,7 +1526,47 @@ function addManualEntry() {
     });
 }
 
-function visualizeProjectData() {
+function removeAllTimeEntries() {
+    if (!currentProject) {
+        showError('Please select a project first.');
+        return;
+    }
+
+    if (confirm('Are you sure you want to remove all time entries for the current project? This action cannot be undone.')) {
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+            let index = store.index('projectId');
+            let request = index.openCursor(IDBKeyRange.only(currentProject.id));
+
+            request.onsuccess = function(event) {
+                let cursor = event.target.result;
+                if (cursor) {
+                    store.delete(cursor.primaryKey);
+                    cursor.continue();
+                } else {
+                    loadTimeEntries();
+                    log(LogLevel.INFO, 'All time entries removed for the current project');
+                    visualizeProjectData();
+                }
+            };
+
+            transaction.oncomplete = function() {
+                showError('All time entries for the current project have been removed.');
+            };
+
+            transaction.onerror = function(event) {
+                log(LogLevel.ERROR, 'Error removing time entries:', event.target.error);
+                showError('Error removing time entries from database');
+            };
+        }).catch(error => {
+            log(LogLevel.ERROR, 'Database error:', error);
+            showError('Failed to remove time entries due to a database error');
+        });
+    }
+}
+
+function visualizeProjectData(allTimeEntries) {
     dbReady.then(() => {
         let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
         let timeEntryStore = transaction.objectStore('timeEntries');
