@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## TiTo 1.04
+
+### Features added and issues resolved
+
+1. User Interface Improvements:
+   - Added pages for the time entry list.
+   - Redesigned the header area.
+     - Improved layout of the title, version number, and subtitle.
+     - Enhanced the styling of the official website link.
+     - Adjusted the timer section.
+
+2. Bug Fixes:
+   - Resolved an issue where time entries were not displayed upon initial load.
+   - Fixed inconsistencies in the entries per page functionality.
+
+3. Documentation:
+   - Updated README.md with current features and future plans.
+
 ## TiTo 1.03
 
 ### Features added and issues resolved

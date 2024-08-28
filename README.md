@@ -1,45 +1,51 @@
-🕚 TiTo Time Tracker - v 1.03
+# 🕚 TiTo Time Tracker - v 1.04
+
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
-Features
-- A clean three-column layout
+## Features
+
+- Clean three-column layout for easy navigation
 - Create and manage multiple projects
 - Start, pause, and stop a timer for active time tracking
 - Add manual time entries
-- Drag-and-drop interface for reordering projects
-- View and edit time entries
-- Charts displaying time spent on different projects, 
-  both total and in selected time ranges
+- Drag-and-drop interface for reordering projects and time entries
+- View and edit time entries with custom date and time inputs
+- Paginated time entries list with customizable entries per page
+- Charts displaying time spent on different projects:
+  - Overall time distribution
+  - Time spent in selected date ranges
+- Date range selection for detailed data analysis
 - Local data storage using IndexedDB
-- Import/Export of database from/into .JSON-file
+- Import/Export functionality for database backup and transfer
 - Built with vanilla JavaScript, HTML, and CSS
-- Offline functionality
-- No server required - works entirely in the browser
+- Offline functionality - works entirely in the browser
 
-Getting Started
+## Getting Started
 
-Prerequisites
-- A modern web browser (Chrome, Firefox, Safari, Opera or Edge)
-- An internet connection (for downloading only; the app works offline once downloaded)
+### Prerequisites
 
-Installation
+- A modern web browser (Chrome, Firefox, Safari, Opera, or Edge)
+- An internet connection (for initial download only; the app works offline once downloaded)
 
-1. Visit my website at https://bjornkennethholmstrom.wordpress.com/tito/
-2. Download the TiTo Time Tracker zip file.
-3. Extract the contents of the zip file to a location on your computer.
-4. Open the extracted folder and find the index.html file.
-5. Double-click on index.html to open it in your default web browser.
+### Installation
 
-Recommended: Create a Bookmark
-For quick and easy access to TiTo Time Tracker, it's recommended that you create a bookmark in your browser:
+1. Visit the [official website](https://bjornkennethholmstrom.wordpress.com/tito/)
+2. Download the TiTo Time Tracker zip file
+3. Extract the contents of the zip file to a location on your computer
+4. Open the extracted folder and find the `index.html` file
+5. Double-click on `index.html` to open it in your default web browser
 
-1. Open the index.html file in your browser as described above.
-2. Create a bookmark in your browser (usually by pressing Ctrl+D or Cmd+D, or by clicking the star icon in the address bar).
-3. Optionally, move the bookmark to your bookmarks bar for one-click access.
+### Recommended: Create a Bookmark
+
+For quick and easy access to TiTo Time Tracker, create a bookmark in your browser:
+
+1. Open the `index.html` file in your browser as described above
+2. Create a bookmark (usually by pressing Ctrl+D or Cmd+D, or by clicking the star icon in the address bar)
+3. Optionally, move the bookmark to your bookmarks bar for one-click access
 
 This will allow you to open the time tracker quickly whenever you need it, enhancing your productivity.
 
-Usage
+## Usage
 
 Adding a Project:
 - Enter a project name in the "Enter new project name" field.
@@ -88,31 +94,31 @@ Data Storage and Management:
 - Your data persists between sessions and no account creation is required.
 - To clear all data, use the "Clear Database" button at the bottom of the project list.
 
+## Known Limitations
 
-Known Limitations
-- Data is stored locally and is not synced across devices.
+- Data is stored locally and is not synced across devices
 
-Future Plans
-- Clear all entries-button for time list entries
-- Pages for browsing time entries
-- More data visualization and reporting features
+## Future Plans
+
+- Enhanced data visualization and reporting features
 - Dark mode
 - Multi-lingual support
 
-License
+## License
+
 See the included file named LICENSE
 
-Contributing
+## Contributing
 
-We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact me through my website at 
+We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact us through our website at 
 https://bjornkennethholmstrom.wordpress.com/contact/
 
 You can also support the development by donating at 
 https://bjornkennethholmstrom.wordpress.com/support/
 Any amount is greatly appreciated!
 
+## Acknowledgments
 
-Acknowledgments
-- Claude, an AI assistant created by Anthropic, for assistance in development and documentation.
+- Claude, an AI assistant created by Anthropic, for assistance in development and documentation
 
 Thank you for using TiTo Time Tracker! We hope it helps you manage your time more effectively.
