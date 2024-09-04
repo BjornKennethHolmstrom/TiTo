@@ -10,7 +10,8 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 - Add manual time entries
 - Drag-and-drop interface for reordering projects and time entries
 - View and edit time entries with custom date and time inputs
-- Paginated time entries list with customizable entries per page
+- Paginated time entries list with customizable entries per page (5, 10, 20, 30, custom, or all)
+- Editable page number for quick navigation through time entries
 - Charts displaying time spent on different projects:
   - Overall time distribution
   - Time spent in selected date ranges
@@ -19,6 +20,7 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 - Import/Export functionality for database backup and transfer
 - Built with vanilla JavaScript, HTML, and CSS
 - Offline functionality - works entirely in the browser
+- Info icon for quick access to app information and links
 
 ## Getting Started
 
@@ -74,6 +76,13 @@ Sorting Time Entries:
 - Click "Sort Oldest First" to sort time entries with the oldest at the top.
 - The last clicked sorting button will affect where new manual time entries are placed in the list.
 
+Navigating Time Entries:
+- Use the pagination controls at the bottom of the time entries list to navigate between pages.
+- Click on the current page number to edit it directly and jump to a specific page.
+
+Customizing Entries Per Page:
+- Use the "Entries per page" dropdown to select how many time entries to display (5, 10, 20, 30, custom, or all).
+
 Reordering Projects:
 - Drag and drop projects in the list to reorder them.
 
@@ -93,6 +102,9 @@ Data Storage and Management:
 - TiTo uses your browser's IndexedDB to store all data locally on your device.
 - Your data persists between sessions and no account creation is required.
 - To clear all data, use the "Clear Database" button at the bottom of the project list.
+
+Accessing App Information:
+- Click the info icon (ℹ️) next to the app title to view version information and important links.
 
 ## Known Limitations
 

@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## TiTo 1.05
+
+### Features added and issues resolved
+
+1. User Interface Improvements:
+   - Redesigned the header area, removing the large official website button for a cleaner look.
+   - Added an info icon (ℹ️) next to the title, providing quick access to app information and links.
+   - Improved the layout of time entry items, placing the remove button on the same line as the description for a more compact view.
+   - Added 5 as an option for the number of time entries displayed per page.
+
+2. Navigation Enhancements:
+   - Made the current page number in the time entry pagination editable, allowing users to jump directly to a specific page.
+
+3. Accessibility and User Experience:
+   - Improved the visibility and usability of the official website and support links.
+   - Enhanced the overall layout for better space utilization and readability.
+
+4. Code Refactoring:
+   - Reorganized and cleaned up the CSS file for better maintainability.
+   - Updated JavaScript functions to handle new UI elements and functionality.
+   - Reorganized and cleaned up codebase for better maintainability
+
+5. Documentation:
+   - Updated README.md with current features and usage instructions.
+   - Updated CHANGELOG.md to reflect recent changes.
+
 ## TiTo 1.04
 
 ### Features added and issues resolved

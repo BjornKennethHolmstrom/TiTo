@@ -8,8 +8,7 @@ const LogLevel = {
     ERROR: 3
 };
 
-// Set the current log level (you would change this for production)
-let currentLogLevel = LogLevel.DEBUG;
+let currentLogLevel = LogLevel.INFO;
 
 // Logging function
 function log(level, message, ...args) {
@@ -22,10 +21,9 @@ function log(level, message, ...args) {
     }
 }
 
-// Global Variables
+// Constants and Global Variables
 let db;
 let dbReady;
-
 let currentProject = null;
 let startTime;
 let elapsedTime = 0;
@@ -35,12 +33,14 @@ let isTimerRunning = false;
 let timerInterval;
 let timerProject = null;
 let projectChart = null;
-let currentSortOrder = 'newest'; // Default sort order
+let currentSortOrder = 'newest';
 let currentPage = 1;
 let entriesPerPage = 10;
 let isAllEntries = false;
 let totalPages = 1;
+let dragSrcEl = null;
 
+/* Initialization functions */
 document.addEventListener('DOMContentLoaded', function() {
     initializeDB();
     initializeUI();
@@ -304,88 +304,10 @@ function initializeUI() {
     } else {
         log(LogLevel.WARN, 'Quick date range select not found');
     }
+    initializePaginationControls();
 }
 
-function exportDatabase() {
-    dbReady.then(() => {
-        const data = {};
-        const tx = db.transaction(['projects', 'timeEntries'], 'readonly');
-        const projectStore = tx.objectStore('projects');
-        const timeEntryStore = tx.objectStore('timeEntries');
-
-        projectStore.getAll().onsuccess = function(event) {
-            data.projects = event.target.result;
-            timeEntryStore.getAll().onsuccess = function(event) {
-                data.timeEntries = event.target.result;
-                
-                // Convert data to JSON string
-                const jsonString = JSON.stringify(data, null, 2);
-                
-                // Create a Blob with the JSON data
-                const blob = new Blob([jsonString], {type: 'application/json'});
-                
-                // Create a download link and trigger the download
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'tito_database_export.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            };
-        };
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Error exporting database:', error);
-        showError('Failed to export database');
-    });
-}
-
-function importDatabase(event) {
-    const file = event.target.files[0];
-    if (!file) {
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (!data.projects || !data.timeEntries) {
-                throw new Error('Invalid file format');
-            }
-
-            dbReady.then(() => {
-                const tx = db.transaction(['projects', 'timeEntries'], 'readwrite');
-                const projectStore = tx.objectStore('projects');
-                const timeEntryStore = tx.objectStore('timeEntries');
-
-                // Clear existing data
-                projectStore.clear();
-                timeEntryStore.clear();
-
-                // Import new data
-                data.projects.forEach(project => projectStore.add(project));
-                data.timeEntries.forEach(entry => timeEntryStore.add(entry));
-
-                tx.oncomplete = function() {
-                    log(LogLevel.INFO, 'Database import completed');
-                    loadProjects();
-                    loadTimeEntries();
-                    visualizeProjectData();
-                    showError('Database imported successfully'); // Use showError for success message too
-                };
-            });
-        } catch (error) {
-            log(LogLevel.ERROR, 'Error importing database:', error);
-            showError('Failed to import database: ' + error.message);
-        }
-    };
-    reader.readAsText(file);
-}
-
-function showError(message) {
-    alert(message); // For now, we'll use a simple alert. In the future, we can create a more sophisticated error display.
-}
-
+/* Project related functions */
 function addProject() {
     const projectName = document.getElementById('newProjectName').value.trim();
     if (!projectName) {
@@ -435,11 +357,11 @@ function loadProjects() {
             } else if (!currentProject || !projects.some(p => p.id === currentProject.id)) {
                 setCurrentProject(projects[0]);
             } else {
-                loadTimeEntries();  // Add this to ensure time entries are loaded
+                loadTimeEntries();
             }
         };
 
-        request.onerror = function(event) {  // Add this error handler
+        request.onerror = function(event) {
             log(LogLevel.ERROR, 'Error loading projects:', event);
             showError('Error loading projects!');
         };
@@ -554,61 +476,6 @@ function updateProjectName(projectId, newName) {
     }).catch(error => {
         log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to update project name due to a database error');
-    });
-}
-
-let dragSrcEl = null;
-
-function handleDragStart(e) {
-    this.style.opacity = '0.4';
-    dragSrcEl = this;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', this.outerHTML);
-}
-
-function handleDragOver(e) {
-    if (e.preventDefault) {
-        e.preventDefault();
-    }
-    e.dataTransfer.dropEffect = 'move';
-    return false;
-}
-
-function handleDrop(e) {
-    e.stopPropagation();
-    e.preventDefault();
-
-    if (dragSrcEl !== this) {
-        const list = this.parentNode;
-        const draggedItem = dragSrcEl.cloneNode(true);
-        
-        // Insert the dragged item before or after the current item
-        const rect = this.getBoundingClientRect();
-        const dropPosition = e.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
-        
-        if (dropPosition === 'before') {
-            list.insertBefore(draggedItem, this);
-        } else {
-            list.insertBefore(draggedItem, this.nextSibling);
-        }
-
-        // Remove the original item
-        list.removeChild(dragSrcEl);
-
-        // Reattach event listeners
-        attachEventListeners(draggedItem);
-
-        // Update project order
-        updateProjectOrder();
-    }
-
-    return false;
-}
-
-function handleDragEnd(e) {
-    this.style.opacity = '1';
-    document.querySelectorAll('#projectList li').forEach(function (item) {
-        item.classList.remove('over');
     });
 }
 
@@ -828,186 +695,7 @@ function setCurrentProject(project) {
     log(LogLevel.DEBUG, 'After setCurrentProject');
 }
 
-function startTimerDisplayUpdate() {
-    setInterval(updateTimerProjectDisplay, 1000); // Update every second
-}
-
-function updateTimerProjectDisplay() {
-    const timerProjectDisplay = document.getElementById('timerProjectDisplay');
-    if (timerProjectDisplay) {
-        if (isTimerRunning && timerProject !== null) {
-            dbReady.then(() => {
-                let transaction = db.transaction(['projects'], 'readonly');
-                let store = transaction.objectStore('projects');
-                let request = store.get(timerProject);
-
-                request.onsuccess = function(event) {
-                    const project = event.target.result;
-                    if (project) {
-                        timerProjectDisplay.textContent = `Timer running for: ${project.name}`;
-                        timerProjectDisplay.style.display = 'block';
-                    } else {
-                        timerProjectDisplay.textContent = 'Timer running for: Unknown project';
-                        timerProjectDisplay.style.display = 'block';
-                    }
-                };
-
-                request.onerror = function(event) {
-                    log(LogLevel.ERROR, 'Error fetching timer project:', event);
-                    timerProjectDisplay.textContent = 'Timer running for: Unknown project';
-                    timerProjectDisplay.style.display = 'block';
-                };
-            });
-        } else {
-            timerProjectDisplay.textContent = '';
-            timerProjectDisplay.style.display = 'none';
-        }
-    }
-}
-
-function togglePlayPause() {
-    if (!isTimerRunning) {
-        startTimer();
-    } else if (isPaused) {
-        resumeTimer();
-    } else {
-        pauseTimer();
-    }
-}
-
-function startTimer() {
-    log(LogLevel.DEBUG, 'Before startTimer');
-    if (!currentProject) {
-        alert('Please select a project first.');
-        return;
-    }
-    isTimerRunning = true;
-    isPaused = false;
-    startTime = Date.now();
-    timerProject = currentProject.id;
-    log(LogLevel.INFO, `Timer started at: ${new Date(startTime).toISOString()} for project ID: ${timerProject}`);
-    timerInterval = setInterval(updateTimeDisplay, 1000);
-    updatePlayPauseButton();
-    updateTimerProjectDisplay();
-    log(LogLevel.DEBUG, 'After startTimer');
-}
-
-function pauseTimer() {
-    isPaused = true;
-    clearInterval(timerInterval);
-    log(LogLevel.INFO, 'Timer paused at:', new Date());
-    updatePlayPauseButton();
-}
-
-function resumeTimer() {
-    isPaused = false;
-    startTime = Date.now() - elapsedTime;
-    timerInterval = setInterval(updateTimeDisplay, 1000);
-    log(LogLevel.INFO, 'Timer resumed at:', new Date());
-    updatePlayPauseButton();
-}
-
-function stopTimer() {
-    log(LogLevel.DEBUG, 'Start of stopTimer');
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        isPaused = false;
-
-        let stopTime = Date.now();
-
-        log(LogLevel.INFO, 'Timer stopped at:', new Date(stopTime));
-        log(LogLevel.INFO, 'Elapsed time (ms):', elapsedTime);
-
-        if (timerProject !== null) {
-            // Check if the timerProject still exists
-            dbReady.then(() => {
-                let transaction = db.transaction(['projects'], 'readonly');
-                let store = transaction.objectStore('projects');
-                let request = store.get(timerProject);
-
-                request.onsuccess = function(event) {
-                    const project = event.target.result;
-                    if (project) {
-                        // Project still exists, save the time entry
-                        saveTimeEntry(startTime, stopTime).then(() => {
-                            currentPage = 1; // Reset to first page
-                            loadTimeEntries().then(() => {
-                                const timeEntryList = document.getElementById('timeEntryList');
-                                timeEntryList.scrollTop = 0; // Scroll to top
-                            });
-                        });
-                        log(LogLevel.INFO, 'Time entry saved for project:', project.name);
-                    } else {
-                        log(LogLevel.INFO, 'Project was deleted while timer was running. Time entry not saved.');
-                        showError('The project was deleted while the timer was running. Time entry not saved.');
-                    }
-                };
-
-                request.onerror = function(event) {
-                    log(LogLevel.ERROR, 'Error checking project existence:', event);
-                    showError('Error checking project existence. Time entry not saved.');
-                    resetTimer();
-                };
-            }).catch(error => {
-                log(LogLevel.ERROR, 'Database error:', error);
-                showError('Failed to access database when stopping timer');
-                resetTimer();
-            });
-        } else {
-            log(LogLevel.INFO, 'No project associated with the timer. Time entry not saved.');
-            showError('No project associated with the timer. Time entry not saved.');
-            resetTimer();
-        }
-    } else {
-        alert("No timer is currently running.");
-    }
-    log(LogLevel.DEBUG, 'End of stopTimer');
-}
-
-function updatePlayPauseButton() {
-    const playPauseButton = document.getElementById('playPauseButton');
-    if (isTimerRunning && !isPaused) {
-        playPauseButton.textContent = '⏸️';
-        playPauseButton.title = 'Pause';
-    } else {
-        playPauseButton.textContent = '▶️';
-        playPauseButton.title = 'Play';
-    }
-}
-
-function updateTimeDisplay() {
-    if (!isPaused && isTimerRunning) {
-        const currentTime = Date.now();
-        elapsedTime = currentTime - startTime;
-        const formattedTime = formatDuration(elapsedTime);
-        document.getElementById('timeDisplay').textContent = formattedTime;
-    }
-}
-
-
-function resetTimer() {
-    //console.log('resetTimer called from:', new Error().stack);
-    log(LogLevel.DEBUG, 'Start of resetTimer');
-    elapsedTime = 0;
-    startTime = null;
-    isTimerRunning = false;
-    isPaused = false;
-    timerProject = null;
-    clearInterval(timerInterval);
-    document.getElementById('timeDisplay').textContent = '00:00:00';
-    updatePlayPauseButton();
-    updateTimerProjectDisplay();
-    log(LogLevel.DEBUG, 'End of resetTimer');
-}
-
-function formatDuration(duration) {
-    const hours = Math.floor(duration / 3600000);
-    const minutes = Math.floor((duration % 3600000) / 60000);
-    const seconds = Math.floor((duration % 60000) / 1000);
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
+/* Time entry-related functions */
 function loadTimeEntries() {
     if (!currentProject) {
         log(LogLevel.INFO, 'No current project, not loading time entries');
@@ -1061,12 +749,32 @@ function loadTimeEntries() {
     });
 }
 
+function initializePaginationControls() {
+    const currentPageInput = document.getElementById('currentPageInput');
+    
+    currentPageInput.addEventListener('change', function() {
+        const newPage = parseInt(this.value);
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            loadTimeEntries();
+        } else {
+            this.value = currentPage;
+        }
+    });
+
+    document.getElementById('firstPageButton').addEventListener('click', goToFirstPage);
+    document.getElementById('prevPageButton').addEventListener('click', goToPrevPage);
+    document.getElementById('nextPageButton').addEventListener('click', goToNextPage);
+    document.getElementById('lastPageButton').addEventListener('click', goToLastPage);
+}
+
 function updatePaginationControls() {
     const firstPageButton = document.getElementById('firstPageButton');
     const prevPageButton = document.getElementById('prevPageButton');
     const nextPageButton = document.getElementById('nextPageButton');
     const lastPageButton = document.getElementById('lastPageButton');
-    const pageIndicator = document.getElementById('pageIndicator');
+    const currentPageInput = document.getElementById('currentPageInput');
+    const totalPagesSpan = document.getElementById('totalPages');
     const paginationControls = document.querySelector('.pagination-controls');
 
     if (isAllEntries) {
@@ -1077,7 +785,9 @@ function updatePaginationControls() {
         prevPageButton.disabled = currentPage === 1;
         nextPageButton.disabled = currentPage === totalPages;
         lastPageButton.disabled = currentPage === totalPages;
-        pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+        currentPageInput.value = currentPage;
+        currentPageInput.max = totalPages;
+        totalPagesSpan.textContent = totalPages;
     }
 }
 
@@ -1137,12 +847,28 @@ function renderTimeEntryList(timeEntries) {
         totalTimeSpan.className = 'total-time';
         totalTimeSpan.textContent = formatDuration(entry.duration);
 
+        const descriptionInputContainer = document.createElement('div');
+        descriptionInputContainer.className = 'description-input-container';
+
         // Create input field for description
         const descriptionInput = document.createElement('input');
         descriptionInput.type = 'text';
         descriptionInput.className = 'description-input';
         descriptionInput.value = entry.description || '';
         descriptionInput.placeholder = 'Enter task description';
+
+        // Create the remove button with trash can emoji
+        const removeButton = document.createElement('button');
+        removeButton.textContent = '🗑️';
+        removeButton.className = 'remove-time-entry-button';
+        removeButton.title = 'Delete entry';
+        removeButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            removeTimeEntry(entry.id);
+        });
+
+        descriptionInputContainer.appendChild(descriptionInput);
+        descriptionInputContainer.appendChild(removeButton);
 
         // Append all elements
         listItem.appendChild(document.createTextNode('Start: '));
@@ -1155,19 +881,7 @@ function renderTimeEntryList(timeEntries) {
         listItem.appendChild(endTimeInput);
         listItem.appendChild(document.createTextNode(' Total: '));
         listItem.appendChild(totalTimeSpan);
-        listItem.appendChild(descriptionInput);
-
-        // Create the remove button with trash can emoji
-        const removeButton = document.createElement('button');
-        removeButton.textContent = '🗑️';
-        removeButton.className = 'remove-time-entry-button';
-        removeButton.title = 'Delete entry';
-        removeButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            removeTimeEntry(entry.id);
-        });
-
-        listItem.appendChild(removeButton);
+        listItem.appendChild(descriptionInputContainer);
 
         // Add drag and drop event listeners
         listItem.addEventListener('dragstart', function(e) {
@@ -1386,23 +1100,6 @@ function createTimeInput(date, name) {
     });
 
     return input;
-}
-
-function isValidTime(timeString) {
-    const regex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    return regex.test(timeString);
-}
-
-function formatDate(date) {
-    return date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-}
-
-function formatTime(date) {
-    return date.toTimeString().slice(0, 5); // Format: HH:MM (24-hour)
-}
-
-function range(start, end) {
-    return Array.from({length: end - start}, (_, i) => start + i);
 }
 
 function updateTimeEntry(id, listItem) {
@@ -1628,6 +1325,233 @@ function removeAllTimeEntries() {
     }
 }
 
+/* Timer functions */
+function startTimerDisplayUpdate() {
+    setInterval(updateTimerProjectDisplay, 1000); // Update every second
+}
+
+function updateTimerProjectDisplay() {
+    const timerProjectDisplay = document.getElementById('timerProjectDisplay');
+    if (timerProjectDisplay) {
+        if (isTimerRunning && timerProject !== null) {
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects'], 'readonly');
+                let store = transaction.objectStore('projects');
+                let request = store.get(timerProject);
+
+                request.onsuccess = function(event) {
+                    const project = event.target.result;
+                    if (project) {
+                        timerProjectDisplay.textContent = `Timer running for: ${project.name}`;
+                        timerProjectDisplay.style.display = 'block';
+                    } else {
+                        timerProjectDisplay.textContent = 'Timer running for: Unknown project';
+                        timerProjectDisplay.style.display = 'block';
+                    }
+                };
+
+                request.onerror = function(event) {
+                    log(LogLevel.ERROR, 'Error fetching timer project:', event);
+                    timerProjectDisplay.textContent = 'Timer running for: Unknown project';
+                    timerProjectDisplay.style.display = 'block';
+                };
+            });
+        } else {
+            timerProjectDisplay.textContent = '';
+            timerProjectDisplay.style.display = 'none';
+        }
+    }
+}
+
+function togglePlayPause() {
+    if (!isTimerRunning) {
+        startTimer();
+    } else if (isPaused) {
+        resumeTimer();
+    } else {
+        pauseTimer();
+    }
+}
+
+function startTimer() {
+    log(LogLevel.DEBUG, 'Before startTimer');
+    if (!currentProject) {
+        alert('Please select a project first.');
+        return;
+    }
+    isTimerRunning = true;
+    isPaused = false;
+    startTime = Date.now();
+    timerProject = currentProject.id;
+    log(LogLevel.INFO, `Timer started at: ${new Date(startTime).toISOString()} for project ID: ${timerProject}`);
+    timerInterval = setInterval(updateTimeDisplay, 1000);
+    updatePlayPauseButton();
+    updateTimerProjectDisplay();
+    log(LogLevel.DEBUG, 'After startTimer');
+}
+
+function pauseTimer() {
+    isPaused = true;
+    clearInterval(timerInterval);
+    log(LogLevel.INFO, 'Timer paused at:', new Date());
+    updatePlayPauseButton();
+}
+
+function resumeTimer() {
+    isPaused = false;
+    startTime = Date.now() - elapsedTime;
+    timerInterval = setInterval(updateTimeDisplay, 1000);
+    log(LogLevel.INFO, 'Timer resumed at:', new Date());
+    updatePlayPauseButton();
+}
+
+function stopTimer() {
+    log(LogLevel.DEBUG, 'Start of stopTimer');
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        isPaused = false;
+
+        let stopTime = Date.now();
+
+        log(LogLevel.INFO, 'Timer stopped at:', new Date(stopTime));
+        log(LogLevel.INFO, 'Elapsed time (ms):', elapsedTime);
+
+        if (timerProject !== null) {
+            // Check if the timerProject still exists
+            dbReady.then(() => {
+                let transaction = db.transaction(['projects'], 'readonly');
+                let store = transaction.objectStore('projects');
+                let request = store.get(timerProject);
+
+                request.onsuccess = function(event) {
+                    const project = event.target.result;
+                    if (project) {
+                        // Project still exists, save the time entry
+                        saveTimeEntry(startTime, stopTime).then(() => {
+                            currentPage = 1; // Reset to first page
+                            loadTimeEntries().then(() => {
+                                const timeEntryList = document.getElementById('timeEntryList');
+                                timeEntryList.scrollTop = 0; // Scroll to top
+                            });
+                        });
+                        log(LogLevel.INFO, 'Time entry saved for project:', project.name);
+                    } else {
+                        log(LogLevel.INFO, 'Project was deleted while timer was running. Time entry not saved.');
+                        showError('The project was deleted while the timer was running. Time entry not saved.');
+                    }
+                };
+
+                request.onerror = function(event) {
+                    log(LogLevel.ERROR, 'Error checking project existence:', event);
+                    showError('Error checking project existence. Time entry not saved.');
+                    resetTimer();
+                };
+            }).catch(error => {
+                log(LogLevel.ERROR, 'Database error:', error);
+                showError('Failed to access database when stopping timer');
+                resetTimer();
+            });
+        } else {
+            log(LogLevel.INFO, 'No project associated with the timer. Time entry not saved.');
+            showError('No project associated with the timer. Time entry not saved.');
+            resetTimer();
+        }
+    } else {
+        alert("No timer is currently running.");
+    }
+    log(LogLevel.DEBUG, 'End of stopTimer');
+}
+
+function updatePlayPauseButton() {
+    const playPauseButton = document.getElementById('playPauseButton');
+    if (isTimerRunning && !isPaused) {
+        playPauseButton.textContent = '⏸️';
+        playPauseButton.title = 'Pause';
+    } else {
+        playPauseButton.textContent = '▶️';
+        playPauseButton.title = 'Play';
+    }
+}
+
+function updateTimeDisplay() {
+    if (!isPaused && isTimerRunning) {
+        const currentTime = Date.now();
+        elapsedTime = currentTime - startTime;
+        const formattedTime = formatDuration(elapsedTime);
+        document.getElementById('timeDisplay').textContent = formattedTime;
+    }
+}
+
+function resetTimer() {
+    log(LogLevel.DEBUG, 'Start of resetTimer');
+    elapsedTime = 0;
+    startTime = null;
+    isTimerRunning = false;
+    isPaused = false;
+    timerProject = null;
+    clearInterval(timerInterval);
+    document.getElementById('timeDisplay').textContent = '00:00:00';
+    updatePlayPauseButton();
+    updateTimerProjectDisplay();
+    log(LogLevel.DEBUG, 'End of resetTimer');
+}
+
+/* UI update functions */
+function handleDragStart(e) {
+    this.style.opacity = '0.4';
+    dragSrcEl = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (dragSrcEl !== this) {
+        const list = this.parentNode;
+        const draggedItem = dragSrcEl.cloneNode(true);
+        
+        // Insert the dragged item before or after the current item
+        const rect = this.getBoundingClientRect();
+        const dropPosition = e.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+        
+        if (dropPosition === 'before') {
+            list.insertBefore(draggedItem, this);
+        } else {
+            list.insertBefore(draggedItem, this.nextSibling);
+        }
+
+        // Remove the original item
+        list.removeChild(dragSrcEl);
+
+        // Reattach event listeners
+        attachEventListeners(draggedItem);
+
+        // Update project order
+        updateProjectOrder();
+    }
+
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.style.opacity = '1';
+    document.querySelectorAll('#projectList li').forEach(function (item) {
+        item.classList.remove('over');
+    });
+}
+
+/* Chart and visualization functions */
 function visualizeProjectData(allTimeEntries) {
     dbReady.then(() => {
         let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
@@ -1699,17 +1623,6 @@ function visualizeProjectData(allTimeEntries) {
         log(LogLevel.ERROR, 'Database error:', error);
         showError('Failed to visualize data due to a database error.');
     });
-}
-
-function calculateProjectTotals(timeEntries) {
-    const projectTotals = {};
-    timeEntries.forEach(entry => {
-        if (!projectTotals[entry.projectId]) {
-            projectTotals[entry.projectId] = 0;
-        }
-        projectTotals[entry.projectId] += entry.duration;
-    });
-    return projectTotals;
 }
 
 function updateOverallChart(projectTotals) {
@@ -1906,6 +1819,83 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
     }
 }
 
+/* Database operations */
+function importDatabase(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.projects || !data.timeEntries) {
+                throw new Error('Invalid file format');
+            }
+
+            dbReady.then(() => {
+                const tx = db.transaction(['projects', 'timeEntries'], 'readwrite');
+                const projectStore = tx.objectStore('projects');
+                const timeEntryStore = tx.objectStore('timeEntries');
+
+                // Clear existing data
+                projectStore.clear();
+                timeEntryStore.clear();
+
+                // Import new data
+                data.projects.forEach(project => projectStore.add(project));
+                data.timeEntries.forEach(entry => timeEntryStore.add(entry));
+
+                tx.oncomplete = function() {
+                    log(LogLevel.INFO, 'Database import completed');
+                    loadProjects();
+                    loadTimeEntries();
+                    visualizeProjectData();
+                    showError('Database imported successfully'); // Use showError for success message too
+                };
+            });
+        } catch (error) {
+            log(LogLevel.ERROR, 'Error importing database:', error);
+            showError('Failed to import database: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function exportDatabase() {
+    dbReady.then(() => {
+        const data = {};
+        const tx = db.transaction(['projects', 'timeEntries'], 'readonly');
+        const projectStore = tx.objectStore('projects');
+        const timeEntryStore = tx.objectStore('timeEntries');
+
+        projectStore.getAll().onsuccess = function(event) {
+            data.projects = event.target.result;
+            timeEntryStore.getAll().onsuccess = function(event) {
+                data.timeEntries = event.target.result;
+                
+                // Convert data to JSON string
+                const jsonString = JSON.stringify(data, null, 2);
+                
+                // Create a Blob with the JSON data
+                const blob = new Blob([jsonString], {type: 'application/json'});
+                
+                // Create a download link and trigger the download
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'tito_database_export.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+        };
+    }).catch(error => {
+        log(LogLevel.ERROR, 'Error exporting database:', error);
+        showError('Failed to export database');
+    });
+}
+
 function clearDatabase() {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
         dbReady.then(() => {
@@ -1937,23 +1927,48 @@ function clearDatabase() {
     }
 }
 
+/* Utility functions */
+function showError(message) {
+    alert(message); // For now, we'll use a simple alert. In the future, we can create a more sophisticated error display.
+}
 
 function setTimerProject(projectId) {
     log(LogLevel.INFO, `Setting timerProject to: ${projectId}`);
     timerProject = projectId;
 }
 
+function isValidTime(timeString) {
+    const regex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(timeString);
+}
 
-// Add this utility function to help with debugging
-/*function addStackTraceToFunction(func, funcName) {
-    return function(...args) {
-        console.log(`${funcName} called from:`, new Error().stack);
-        return func.apply(this, args);
-    };
-}*/
+function formatDuration(duration) {
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
 
-// Wrap key functions with stack trace logging
-//stopTimer = addStackTraceToFunction(stopTimer, 'stopTimer');
-//saveTimeEntry = addStackTraceToFunction(saveTimeEntry, 'saveTimeEntry');
-//resetTimer = addStackTraceToFunction(resetTimer, 'resetTimer');
+function formatDate(date) {
+    return date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+}
+
+function formatTime(date) {
+    return date.toTimeString().slice(0, 5); // Format: HH:MM (24-hour)
+}
+
+function range(start, end) {
+    return Array.from({length: end - start}, (_, i) => start + i);
+}
+
+function calculateProjectTotals(timeEntries) {
+    const projectTotals = {};
+    timeEntries.forEach(entry => {
+        if (!projectTotals[entry.projectId]) {
+            projectTotals[entry.projectId] = 0;
+        }
+        projectTotals[entry.projectId] += entry.duration;
+    });
+    return projectTotals;
+}
 

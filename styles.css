@@ -1,11 +1,10 @@
-/* Basic reset to ensure consistency across browsers */
+/* Reset and base styles */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Body and container styles */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
@@ -17,6 +16,7 @@ body {
     padding: 20px;
 }
 
+/* Layout styles */
 .container {
     display: flex;
     flex-wrap: wrap;
@@ -39,13 +39,13 @@ body {
     max-height: calc(100vh - 40px);
     overflow: hidden;
 }
-/* Adjust the width of columns */
+
 .column:first-child {
-    flex: 0 0 250px; /* Fixed width for the left column */
+    flex: 0 0 250px;
 }
 
 .column:nth-child(2), .column:nth-child(3) {
-    flex: 1; /* Middle and right columns take up equal remaining space */
+    flex: 1;
 }
 
 .section {
@@ -54,28 +54,41 @@ body {
     flex-direction: column;
 }
 
-.timer-section {
-    display: flex;
-    flex-direction: column;
+/* Typography styles */
+h1 {
+    font-size: 2.5em;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.2;
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
     align-items: center;
-    margin-top: 10px; /* Reduced from 20px */
 }
 
-.timer-section h3 {
-    margin-bottom: 5px; /* Reduced from 15px */
+h2 {
+    margin-bottom: 15px;
 }
 
-#timeDisplay {
-    font-size: 1.8em;
-    margin: 5px 0;
-    line-height: 1; /* Add this to reduce vertical space */
+h3 {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    color: #333;
 }
 
-#timerProjectDisplay {
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #666;
-    line-height: 1; /* Add this to reduce vertical space */
+.subtitle {
+    display: block;
+    font-size: 0.8em;
+    color: #555;
+    font-weight: normal;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+}
+
+/* Header and title styles */
+.title-container {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 .header {
@@ -85,76 +98,18 @@ body {
     margin-bottom: 20px;
 }
 
-.link-container {
-    text-align: center;
-    margin-bottom: 20px;
+.info-icon {
+  font-size: 0.5em;
+  vertical-align: super;
+  margin-left: 10px;
+  cursor: pointer;
 }
 
-.website-link {
-    display: inline-block;
-    padding: 8px 15px;
-    background-color: #0799c5;
-    color: white;
-    text-decoration: none;
-    border-radius: 20px;
-    font-size: 0.9em;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+.info-icon:hover {
+  opacity: 0.7;
 }
 
-.website-link:hover {
-    background-color: #66d3f4;
-    transform: translateY(-2px);
-}
-
-.website-link:active {
-    transform: translateY(0);
-}
-
-.website-link span {
-    display: inline-block;
-    text-align: center;
-}
-.title-container {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-h1 {
-    font-size: 2.5em;
-    font-weight: 600;
-    color: #333;
-    line-height: 1.2;
-    margin: 0;
-    padding: 0;
-}
-
-.version {
-    font-size: 0.4em;
-    vertical-align: super;
-    color: #666;
-    margin-left: 5px;
-    font-weight: normal;
-}
-
-.subtitle {
-    display: block;
-    font-size: 0.6em;
-    color: #555;
-    font-weight: normal;
-    margin-top: 5px;
-}
-
-h2 {
-    margin-bottom: 15px; /* Adds space below h2 elements, including the Current Project */
-}
-h3 {
-    font-size: 1.2em;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-/* Input and button styles */
+/* Form element styles */
 input[type="text"] {
     width: 200px;
     padding: 10px;
@@ -163,6 +118,25 @@ input[type="text"] {
     margin-bottom: 10px;
 }
 
+input[type="date"],
+input[name$="-time"] {
+    margin: 0 2px;
+    padding: 3px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+input[type="date"] {
+    width: 110px;
+}
+
+input[name$="-time"] {
+    width: 60px;
+    text-align: center;
+}
+
+/* Button styles */
 button {
     background-color: #007bff;
     border: none;
@@ -182,7 +156,85 @@ button:hover {
     background-color: #0056b3;
 }
 
-/* Timer-specific button container */
+.green-button {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+    width: calc(100% - 40px);
+    padding: 10px;
+    font-size: 16px;
+    align-self: center;
+}
+
+.green-button:hover {
+    background-color: #45a049;
+}
+
+.green-button:active {
+    background-color: #3e8e41;
+}
+
+.red-button {
+    background-color: #e74c3c;
+}
+
+.red-button:hover {
+    background-color: #c0392b;
+}
+
+.red-button:active {
+    background-color: #a93226;
+}
+
+#clearDatabaseButton.red-button {
+    background-color: #7B0323 !important;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+    width: calc(100% - 40px);
+    padding: 10px;
+    font-size: 16px;
+    align-self: center;
+}
+
+#clearDatabaseButton.red-button:hover {
+    background-color: #5E0219 !important;
+}
+
+#clearDatabaseButton.red-button:active {
+    background-color: #410111 !important;
+}
+
+/* Timer section styles */
+.timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.timer-section h3 {
+    margin-bottom: 5px;
+}
+
+#timeDisplay {
+    font-size: 1.8em;
+    margin: 5px 0;
+    line-height: 1;
+}
+
+#timerProjectDisplay {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1;
+}
+
 .timer-section .button-container {
     display: flex;
     justify-content: center;
@@ -190,11 +242,10 @@ button:hover {
     margin-bottom: 5px;
 }
 
-/* Specific styles for play/pause and stop buttons */
 #playPauseButton, #stopButton {
     font-size: 24px;
-    width: 50px; /* Reduced from 60px */
-    height: 50px; /* Reduced from 60px */
+    width: 50px;
+    height: 50px;
     border: none;
     background-color: transparent;
     cursor: pointer;
@@ -202,7 +253,7 @@ button:hover {
     justify-content: center;
     align-items: center;
     transition: transform 0.2s ease, opacity 0.2s ease;
-    padding: 0; /* Remove any padding */
+    padding: 0;
 }
 
 #playPauseButton:hover, #stopButton:hover {
@@ -212,14 +263,6 @@ button:hover {
 #playPauseButton:active, #stopButton:active {
     transform: scale(0.95);
 }
-
-.button-container {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
 
 /* List styles */
 ul {
@@ -233,7 +276,7 @@ li {
     background-color: #f8f8f8;
     border: 1px solid #ddd;
     display: flex;
-    justify-content: space-between; /* Align items to be spaced out */
+    justify-content: space-between;
     align-items: center;
     position: relative;
 }
@@ -244,9 +287,49 @@ li button {
 
 .section:has(#projectList) {
     flex-grow: 1;
-    overflow: hidden; /* Hide overflow of the section */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+/* Project column styles */
+.add-project-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: flex-start;
+}
+
+.add-project-container input[type="text"] {
+    flex-grow: 1;
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.add-project-container button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: -1px;
+}
+
+.add-project-container button:hover {
+    background-color: #0056b3;
+}
+
+/* Project list styles */
+#projectList {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-right: 10px;
+    margin-right: -10px;
+    margin-top: 10px;
 }
 
 #projectList::-webkit-scrollbar {
@@ -264,13 +347,6 @@ li button {
 
 #projectList::-webkit-scrollbar-thumb:hover {
     background: #555;
-}
-
-#projectList {
-    overflow-y: auto; /* Enable vertical scrolling */
-    flex-grow: 1; /* Allow the list to grow and fill available space */
-    padding-right: 10px; /* Add some padding for the scrollbar */
-    margin-right: -10px; /* Offset the padding to align with other elements */
 }
 
 #projectList li {
@@ -292,17 +368,12 @@ li button {
     border-left: 4px solid #007bff;
 }
 
-/* Add this new style */
 #projectList li:hover .project-name::after {
     content: " ✎";
     font-size: 0.8em;
     color: #007bff;
     margin-left: 5px;
 }
-
-/*#projectList li:hover {
-    background-color: #f0f0f0;
-}*/
 
 #projectList li.over {
     border-top: 2px solid #000;
@@ -347,54 +418,7 @@ li button {
     transform: scale(1.2);
 }
 
-.green-button {
-    background-color: #4CAF50; /* Green */
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-top: 10px;
-    width: calc(100% - 40px);
-    padding: 10px;
-    font-size: 16px;
-    align-self: center;
-}
-
-.green-button:hover {
-    background-color: #45a049; /* Darker green on hover */
-}
-
-.green-button:active {
-    background-color: #3e8e41; /* Even darker when pressed */
-}
-
-#exportDatabaseButton,
-#importDatabaseButton,
-#clearDatabaseButton {
-    margin-top: 10px;
-}
-
-#clearDatabaseButton.red-button {
-    background-color: #7B0323 !important; /* Wine red */
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-top: 10px;
-    width: calc(100% - 40px);
-    padding: 10px;
-    font-size: 16px;
-    align-self: center;
-}
-
-#clearDatabaseButton.red-button:hover {
-    background-color: #5E0219 !important; /* Darker wine red on hover */
-}
-
-#clearDatabaseButton.red-button:active {
-    background-color: #410111 !important; /* Even darker when pressed */
-}
-
+/* Time entries section styles */
 .time-entries-section {
     flex-grow: 1;
     display: flex;
@@ -402,26 +426,99 @@ li button {
     overflow: hidden;
 }
 
-/* General button container (for other sections) */
-.button-container {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 20px;
+#timeEntryList {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-right: -10px;
+    max-height: calc(100% - 100px);
 }
 
-.button-container button {
-    flex: 1;
-    padding: 10px 15px;
-    font-size: 14px;
-    border: none;
+#timeEntryList li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
     border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.1s ease;
-    text-align: center;
-    white-space: nowrap;
+    cursor: move;
+    transition: background-color 0.3s ease;
+}
+
+#timeEntryList li:hover {
+    background-color: #f0f0f0;
+}
+
+#timeEntryList li.dragging {
+    opacity: 0.5;
+    background-color: #e0e0e0;
+}
+
+#timeEntryList li.over {
+    border-top: 2px solid #007bff;
+}
+
+.time-entry-text {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: calc(100% - 50px);
+}
+
+.date-time-group {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+    margin-bottom: 5px;
+}
+
+.date-display {
+    margin: 0 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+.description-input {
+    flex: 1;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 0;
+}
+
+.description-input-container {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    margin: 5px 0;
+}
+
+.total-time {
+    margin-right: 10px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.remove-time-entry-button {
+    background-color: transparent;
+    color: #333;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    margin-left: 5px;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.remove-time-entry-button:hover {
+    color: #d9534f;
+    transform: scale(1.2);
 }
 
 #addManualEntryButton {
@@ -446,201 +543,7 @@ li button {
     background-color: #410111;
 }
 
-.entries-per-page-container {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-}
-
-.entries-per-page-container label {
-    margin-right: 10px;
-}
-
-#entriesPerPageSelect {
-    padding: 5px;
-    margin-right: 10px;
-}
-
-#customEntriesPerPage {
-    width: 60px;
-    padding: 5px;
-}
-
-@media (max-width: 768px) {
-    .button-container {
-        flex-direction: column;
-    }
-
-    .button-container button {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-}
-
-/* Adjust the width of columns for 1920px width screens */
-@media (min-width: 1920px) {
-    .column:first-child {
-        flex: 0 0 250px; /* Fixed width for the left column */
-    }
-
-    .column:nth-child(2) {
-        flex: 0 0 calc(25% - 20px); /* Narrower second column */
-    }
-
-    .column:nth-child(3) {
-        flex: 1; /* Third column takes up remaining space */
-    }
-}
-
-/* Additional styles for smaller screens */
-@media (max-width: 1919px) {
-    .column:first-child {
-        flex: 0 0 250px; /* Fixed width for the left column */
-    }
-
-    .column:nth-child(2), .column:nth-child(3) {
-        flex: 1; /* Second and third columns take up equal remaining space */
-    }
-}
-
-/* Update the timeEntryList styles */
-#timeEntryList {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 10px;
-    margin-right: -10px;
-    max-height: calc(100% - 100px); /* Adjust based on other elements' heights */
-}
-
-#timeEntryList li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 10px;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: move; /* Indicates the item is draggable */
-    transition: background-color 0.3s ease;
-}
-
-#timeEntryList li:hover {
-    background-color: #f0f0f0;
-}
-
-#timeEntryList li.dragging {
-    opacity: 0.5;
-    background-color: #e0e0e0;
-}
-
-#timeEntryList li.over {
-    border-top: 2px solid #007bff;
-}
-
-.time-entry-text {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Date and time input styles */
-.date-time-group {
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-    margin-right: 10px;
-    margin-bottom: 5px;
-}
-
-input[type="date"],
-input[name$="-time"] {
-    margin: 0 2px;
-    padding: 3px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 12px;
-}
-
-input[type="date"] {
-    width: 110px;
-}
-
-input[name$="-time"] {
-    width: 60px;
-    text-align: center;
-}
-
-.date-display {
-    margin: 0 5px;
-    font-size: 14px;
-    color: #666;
-}
-
-/* Description input styles */
-.description-input {
-    flex: 1 1 100%;
-    margin: 5px 0;
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 0; /* Allows flex item to shrink below its minimum content size */
-    white-space: normal; /* Allows text to wrap */
-    word-break: break-word; /* Breaks long words if necessary */
-}
-
-/* Total time and remove button styles */
-.total-time {
-    margin-right: 10px;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.remove-time-entry-button {
-    background-color: transparent;
-    color: #333;
-    border: none;
-    cursor: pointer;
-    font-size: 18px;
-    padding: 5px;
-    margin-left: auto;
-}
-
-.remove-time-entry-button:hover {
-    color: #d9534f;
-}
-
-.remove-time-entry-button:hover {
-    transform: translateY(-50%) scale(1.2);
-}
-
-/* Add this new rule to contain the text */
-.time-entry-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: calc(100% - 50px); /* Leave some space for the button */
-}
-
-.remove-time-entry-button:hover {
-    background-color: darkred; /* Darker red on hover */
-}
-
-/* Red button styles */
-.red-button {
-    background-color: #e74c3c; /* Red background */
-}
-
-.red-button:hover {
-    background-color: #c0392b; /* Darker red on hover */
-}
-
-.red-button:active {
-    background-color: #a93226; /* Even darker red when pressed */
-}
-
+/* Pagination controls */
 .pagination-controls {
     display: flex;
     justify-content: center;
@@ -673,6 +576,16 @@ input[name$="-time"] {
     font-weight: bold;
 }
 
+#currentPageInput {
+    width: 50px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+/* Chart styles */
 .chart-container {
   width: 100%;
   margin-top: 20px;
@@ -681,28 +594,29 @@ input[name$="-time"] {
 .chart-tabs {
   display: flex;
   border-bottom: 1px solid #ddd;
-  gap: 5px; /* Space between buttons */
-  margin-bottom: 15px; /* Space below the buttons */
+  gap: 5px;
+  margin-bottom: 15px;
 }
 
 .chart-tab {
     padding: 10px 20px;
     border: none;
-    background: #f0f0f0; /* Light grey background */
+    background: #f0f0f0;
     cursor: pointer;
-    color: #007bff; /* Blue text color */
+    color: #007bff;
     transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
 }
 
 .chart-tab:hover {
-    background-color: #007bff; /* Blue background on hover */
-    color: white; /* White text on hover */
+    background-color: #007bff;
+    color: white;
 }
 
 .chart-tab.active {
-    background-color: #007bff; /* Blue background for active tab */
-    color: white; /* White text for active tab */
-    border-bottom: 2px solid #0056b3; /* Darker blue border for active tab */
+    background-color: #007bff;
+    color: white;
+    border-bottom: 2px solid #0056b3;
 }
 
 .chart-content {
@@ -726,31 +640,117 @@ input[name$="-time"] {
   width: 48%;
 }
 
-.chart-tab {
-    border-radius: 5px; /* Rounded corners */
-}
-
 #projectChart {
 /*    width: 100% !important;*/
     height: 100% !important;
 }
 
-/* Adjust the width of columns for screens 1200px and above */
-@media (min-width: 1200px) {
-    .column:first-child {
-        flex: 0 0 250px; /* Fixed width for the left column */
+/* Modal styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 500px;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Footer styles */
+.footer-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 0 20px;
+}
+
+.footer-link {
+  color: #0799c5;
+  text-decoration: none;
+  font-size: 0.9em;
+  transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+  color: #66d3f4;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .button-container {
+        flex-direction: column;
     }
 
-    .column:nth-child(2) {
-        flex: 0 0 calc(25% - 20px); /* Narrower second column */
-    }
-
-    .column:nth-child(3) {
-        flex: 1; /* Third column takes up remaining space */
+    .button-container button {
+        width: 100%;
+        margin-bottom: 10px;
     }
 }
 
-/* Styles for screens below 1200px */
+@media (min-width: 1920px) {
+    .column:first-child {
+        flex: 0 0 250px;
+    }
+
+    .column:nth-child(2) {
+        flex: 0 0 calc(25% - 20px);
+    }
+
+    .column:nth-child(3) {
+        flex: 1;
+    }
+}
+
+@media (max-width: 1919px) {
+    .column:first-child {
+        flex: 0 0 250px;
+    }
+
+    .column:nth-child(2), .column:nth-child(3) {
+        flex: 1;
+    }
+}
+
+@media (min-width: 1200px) {
+    .column:first-child {
+        flex: 0 0 250px;
+    }
+
+    .column:nth-child(2) {
+        flex: 0 0 calc(25% - 20px);
+    }
+
+    .column:nth-child(3) {
+        flex: 1;
+    }
+}
+
 @media (max-width: 1199px) {
     .container {
         flex-direction: column;
@@ -763,7 +763,6 @@ input[name$="-time"] {
     }
 }
 
-/* Additional responsive adjustments */
 @media (max-width: 1200px) {
     .header {
         flex-direction: column;
@@ -773,6 +772,63 @@ input[name$="-time"] {
         margin-top: 10px;
     }
     .chart-container {
-        height: 300px; /* Smaller height for mobile devices */
+        height: 300px;
     }
 }
+
+/* Utility classes */
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+/* I don't know which one we are using =/ */
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.button-container button {
+    flex: 1;
+    padding: 10px 15px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.entries-per-page-container {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.entries-per-page-container label {
+    margin-right: 10px;
+}
+
+#entriesPerPageSelect {
+    padding: 5px;
+    margin-right: 10px;
+}
+
+#customEntriesPerPage {
+    width: 60px;
+    padding: 5px;
+}
+
+/* Specific element styles */
+#exportDatabaseButton,
+#importDatabaseButton,
+#clearDatabaseButton {
+    margin-top: 10px;
+}
+
