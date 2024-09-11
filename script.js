@@ -2288,11 +2288,35 @@ function exportReportAsCSV(report) {
 
     for (const [period, data] of Object.entries(report)) {
         data.entries.forEach(entry => {
-            csvContent += `"${period}","${formatDuration(data.total)}","${entry.description || 'No description'}","${formatDuration(entry.duration)}","${entry.projectName}"\n`;
+            const row = [
+                period,
+                formatDuration(data.total),
+                (entry.description || 'No description').replace(/"/g, '""'), // Escape quotes
+                formatDuration(entry.duration),
+                entry.projectName
+            ];
+            csvContent += `"${row.join('","')}"\n`;
         });
     }
 
-    downloadFile(csvContent, 'time_tracker_report.csv', 'text/csv;charset=utf-8;');
+    try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (navigator.msSaveBlob) { // IE 10+
+            navigator.msSaveBlob(blob, 'time_tracker_report.csv');
+        } else {
+            link.href = URL.createObjectURL(blob);
+            link.download = 'time_tracker_report.csv';
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        console.log('CSV export successful');
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        alert('An error occurred while exporting the CSV. Please try again.');
+    }
 }
 
 function exportReportAsPDF(report) {
