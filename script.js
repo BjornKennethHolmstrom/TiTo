@@ -184,41 +184,29 @@ function initializeUI() {
         });
     }
 
-    const chartTabs = document.querySelectorAll('.chart-tab');
-    const chartSections = document.querySelectorAll('.chart-section');
+    const tabs = document.querySelectorAll('.tab');
+    const tabSections = document.querySelectorAll('.tab-section');
 
-    if (chartTabs.length === 0 || chartSections.length === 0) {
-        log(LogLevel.WARN, 'Chart tabs or sections not found');
-    } else {
-        chartTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const targetId = tab.getAttribute('data-tab');
-                if (!targetId) {
-                    log(LogLevel.WARN, 'Tab missing data-tab attribute');
-                    return;
-                }
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetId = tab.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and sections
+            tabs.forEach(t => t.classList.remove('active'));
+            tabSections.forEach(s => s.classList.remove('active'));
 
-                // Remove active class from all tabs and sections
-                chartTabs.forEach(t => t.classList.remove('active'));
-                chartSections.forEach(s => s.classList.remove('active'));
+            // Add active class to clicked tab and corresponding section
+            tab.classList.add('active');
+            document.getElementById(`${targetId}Section`).classList.add('active');
 
-                // Add active class to clicked tab and corresponding section
-                tab.classList.add('active');
-                const targetSection = document.getElementById(`${targetId}ChartSection`);
-                if (targetSection) {
-                    targetSection.classList.add('active');
-                    // Trigger chart update if necessary
-                    if (targetId === 'timeRange') {
-                        visualizeProjectData();
-                    }
-                } else {
-                    log(LogLevel.WARN, `Chart section not found: ${targetId}ChartSection`);
-                }
-            });
+            // Trigger chart update if necessary
+            if (targetId === 'timeRange') {
+                visualizeProjectData();
+            } else if (targetId === 'reports') {
+                // If you need to do any initialization for the reports tab, do it here
+            }
         });
-
-        log(LogLevel.INFO, 'Chart tab switching initialized');
-    }
+    });
 
     // Add event listener for chart date range selection
     const applyDateRangeButton = document.getElementById('applyDateRange');
