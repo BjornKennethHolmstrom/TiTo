@@ -305,6 +305,7 @@ function initializeUI() {
         log(LogLevel.WARN, 'Quick date range select not found');
     }
     initializePaginationControls();
+    initializeReportFeature();
 }
 
 /* Project related functions */
@@ -1817,6 +1818,288 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
             options: barOptions
         });
     }
+}
+
+/* Project report related functions */
+
+function initializeReportFeature() {
+  const reportType = document.getElementById('reportType');
+  const startDate = document.getElementById('reportStartDate');
+  const endDate = document.getElementById('reportEndDate');
+  const generateButton = document.getElementById('generateReport');
+  const selectAllButton = document.getElementById('selectAllProjects');
+  const deselectAllButton = document.getElementById('deselectAllProjects');
+
+  // Set default dates
+  const today = new Date();
+  endDate.value = formatDate(today);
+  startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1)); // First day of current month
+
+  // Populate project selection
+  populateProjectSelection();
+
+  // Add event listeners
+  generateButton.addEventListener('click', generateReport);
+  selectAllButton.addEventListener('click', selectAllProjects);
+  deselectAllButton.addEventListener('click', deselectAllProjects);
+
+  // Add event listener for range selection
+  const projectSelection = document.getElementById('projectSelection');
+  projectSelection.addEventListener('mousedown', startProjectRangeSelection);
+}
+
+function populateProjectSelection() {
+  const projectSelection = document.getElementById('projectSelection');
+  projectSelection.innerHTML = ''; // Clear existing checkboxes
+
+  dbReady.then(() => {
+    let transaction = db.transaction(['projects'], 'readonly');
+    let store = transaction.objectStore('projects');
+    let request = store.getAll();
+
+    request.onsuccess = function(event) {
+      const projects = event.target.result;
+      projects.forEach((project, index) => {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `project-${project.id}`;
+        checkbox.value = project.id;
+        checkbox.dataset.index = index;
+
+        const label = document.createElement('label');
+        label.htmlFor = `project-${project.id}`;
+        label.textContent = project.name;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'project-checkbox-wrapper';
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(label);
+
+        projectSelection.appendChild(wrapper);
+      });
+    };
+  });
+}
+
+function selectAllProjects() {
+  const checkboxes = document.querySelectorAll('#projectSelection input[type="checkbox"]');
+  checkboxes.forEach(checkbox => checkbox.checked = true);
+}
+
+function deselectAllProjects() {
+  const checkboxes = document.querySelectorAll('#projectSelection input[type="checkbox"]');
+  checkboxes.forEach(checkbox => checkbox.checked = false);
+}
+
+function startProjectRangeSelection(event) {
+  if (event.target.type !== 'checkbox') return;
+
+  const projectSelection = document.getElementById('projectSelection');
+  const checkboxes = Array.from(projectSelection.querySelectorAll('input[type="checkbox"]'));
+  const startIndex = parseInt(event.target.dataset.index);
+  let lastChecked = startIndex;
+
+  function rangeSelect(e) {
+    if (e.target.type !== 'checkbox') return;
+    
+    const currentIndex = parseInt(e.target.dataset.index);
+    const start = Math.min(startIndex, currentIndex);
+    const end = Math.max(startIndex, currentIndex);
+    
+    checkboxes.forEach((checkbox, index) => {
+      if (index >= start && index <= end) {
+        checkbox.checked = e.target.checked;
+      }
+    });
+
+    lastChecked = currentIndex;
+  }
+
+  function stopRangeSelect() {
+    projectSelection.removeEventListener('mouseover', rangeSelect);
+    document.removeEventListener('mouseup', stopRangeSelect);
+  }
+
+  projectSelection.addEventListener('mouseover', rangeSelect);
+  document.addEventListener('mouseup', stopRangeSelect);
+}
+
+function generateReport() {
+  const reportType = document.getElementById('reportType').value;
+  const startDate = new Date(document.getElementById('reportStartDate').value);
+  const endDate = new Date(document.getElementById('reportEndDate').value);
+  const selectedProjects = Array.from(document.querySelectorAll('#projectSelection input:checked')).map(cb => parseInt(cb.value));
+
+  if (selectedProjects.length === 0) {
+    alert('Please select at least one project.');
+    return;
+  }
+
+  dbReady.then(() => {
+    let transaction = db.transaction(['timeEntries'], 'readonly');
+    let store = transaction.objectStore('timeEntries');
+    let request = store.getAll();
+
+    request.onsuccess = function(event) {
+      const allEntries = event.target.result;
+      const filteredEntries = allEntries.filter(entry => 
+        selectedProjects.includes(entry.projectId) &&
+        new Date(entry.start) >= startDate &&
+        new Date(entry.end) <= endDate
+      );
+
+      let report;
+      if (reportType === 'weekly') {
+        report = generateWeeklyReport(filteredEntries, startDate, endDate);
+      } else {
+        report = generateMonthlyReport(filteredEntries, startDate, endDate);
+      }
+
+      displayReport(report);
+    };
+  });
+}
+
+function generateWeeklyReport(entries, startDate, endDate) {
+    let report = {};
+    let currentDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Ensure endDate is set to the end of the day
+    endDate.setHours(23, 59, 59, 999);
+
+    while (currentDate <= endDate) {
+        let weekStart = new Date(currentDate);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Set to Sunday
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6, 23, 59, 59, 999); // Set to Saturday end of day
+
+        // Adjust weekEnd if it's beyond the overall endDate
+        if (weekEnd > endDate) {
+            weekEnd = new Date(endDate);
+        }
+
+        let weekEntries = entries.filter(entry => {
+            let entryStart = new Date(entry.start);
+            let entryEnd = new Date(entry.end);
+            return (
+                (entryStart >= weekStart && entryStart <= weekEnd) ||
+                (entryEnd >= weekStart && entryEnd <= weekEnd) ||
+                (entryStart <= weekStart && entryEnd >= weekEnd)
+            );
+        });
+
+        let weekTotal = weekEntries.reduce((total, entry) => {
+            let entryStart = new Date(entry.start);
+            let entryEnd = new Date(entry.end);
+            
+            // Adjust entry start and end times if they fall outside the week
+            if (entryStart < weekStart) entryStart = weekStart;
+            if (entryEnd > weekEnd) entryEnd = weekEnd;
+            
+            return total + (entryEnd - entryStart);
+        }, 0);
+
+        let weekKey = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+
+        report[weekKey] = {
+            total: weekTotal,
+            entries: weekEntries
+        };
+
+        currentDate.setDate(currentDate.getDate() + 7); // Move to next week
+    }
+
+    return report;
+}
+
+function generateMonthlyReport(entries, startDate, endDate) {
+    let report = {};
+    let currentDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Ensure endDate is set to the end of the day
+    endDate.setHours(23, 59, 59, 999);
+
+    while (currentDate <= endDate) {
+        let monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        let monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        // Adjust monthEnd if it's beyond the overall endDate
+        if (monthEnd > endDate) {
+            monthEnd = new Date(endDate);
+        }
+
+        let monthEntries = entries.filter(entry => {
+            let entryStart = new Date(entry.start);
+            let entryEnd = new Date(entry.end);
+            return (
+                (entryStart >= monthStart && entryStart <= monthEnd) ||
+                (entryEnd >= monthStart && entryEnd <= monthEnd) ||
+                (entryStart <= monthStart && entryEnd >= monthEnd)
+            );
+        });
+
+        let monthTotal = monthEntries.reduce((total, entry) => {
+            let entryStart = new Date(entry.start);
+            let entryEnd = new Date(entry.end);
+            
+            // Adjust entry start and end times if they fall outside the month
+            if (entryStart < monthStart) entryStart = monthStart;
+            if (entryEnd > monthEnd) entryEnd = monthEnd;
+            
+            return total + (entryEnd - entryStart);
+        }, 0);
+
+        let monthKey = `${monthStart.toLocaleString('default', { month: 'long' })} ${monthStart.getFullYear()}`;
+
+        report[monthKey] = {
+            total: monthTotal,
+            entries: monthEntries
+        };
+
+        currentDate.setMonth(currentDate.getMonth() + 1); // Move to next month
+    }
+
+    return report;
+}
+
+function displayReport(report) {
+  const reportResults = document.getElementById('reportResults');
+  reportResults.innerHTML = ''; // Clear previous results
+
+  const table = document.createElement('table');
+  table.className = 'report-table';
+
+  // Create table header
+  const headerRow = table.insertRow();
+  ['Period', 'Total Time', 'Details'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+
+  // Create table body
+  for (const [period, data] of Object.entries(report)) {
+    const row = table.insertRow();
+    
+    const periodCell = row.insertCell();
+    periodCell.textContent = period;
+
+    const totalCell = row.insertCell();
+    totalCell.textContent = formatDuration(data.total);
+
+    const detailsCell = row.insertCell();
+    const detailsList = document.createElement('ul');
+    data.entries.forEach(entry => {
+      const listItem = document.createElement('li');
+      listItem.textContent = `${entry.description || 'No description'}: ${formatDuration(entry.duration)}`;
+      detailsList.appendChild(listItem);
+    });
+    detailsCell.appendChild(detailsList);
+  }
+
+  reportResults.appendChild(table);
 }
 
 /* Database operations */

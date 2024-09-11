@@ -90,6 +90,7 @@
           <div class="chart-tabs">
             <button class="chart-tab active" data-tab="overall">Overall Time</button>
             <button class="chart-tab" data-tab="timeRange">Time Range</button>
+            <button class="chart-tab" data-tab="report">Reports</button>
           </div>
           
           <div class="chart-content">
@@ -123,6 +124,28 @@
                 <div class="chart-wrapper">
                   <canvas id="timeRangeBarChart"></canvas>
                 </div>
+              </div>
+            </div>
+            <div id="reportSection" class="section">
+              <h2>Reports</h2>
+              <div class="report-controls">
+                <select id="reportType">
+                  <option value="weekly">Weekly Summary</option>
+                  <option value="monthly">Monthly Summary</option>
+                </select>
+                <input type="date" id="reportStartDate">
+                <input type="date" id="reportEndDate">
+                <div id="projectSelectionControls">
+                  <button id="selectAllProjects">Select All</button>
+                  <button id="deselectAllProjects">Deselect All</button>
+                </div>
+                <div id="projectSelection">
+                  <!-- Project checkboxes will be dynamically added here -->
+                </div>
+                <button id="generateReport">Generate Report</button>
+              </div>
+              <div id="reportResults">
+                <!-- Report will be displayed here -->
               </div>
             </div>
           </div>
