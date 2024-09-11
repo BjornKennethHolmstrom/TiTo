@@ -2232,28 +2232,43 @@ function displayReport(report, selectedColumns) {
         const end = start + entriesPerPage;
         const pageEntries = allEntries.slice(start, end);
 
-        pageEntries.forEach(entry => {
+        let displayedPeriods = new Set();
+
+        pageEntries.forEach((entry, index) => {
             const row = table.insertRow();
+            let cellIndex = 0;
+
             selectedColumns.forEach(column => {
-                const cell = row.insertCell();
                 switch(column) {
                     case 'period':
-                        cell.textContent = entry.period;
+                        if (!displayedPeriods.has(entry.period)) {
+                            const cell = row.insertCell(cellIndex++);
+                            cell.textContent = entry.period;
+                            let periodEntryCount = pageEntries.slice(index).filter(e => e.period === entry.period).length;
+                            cell.rowSpan = periodEntryCount;
+                        }
                         break;
                     case 'totalTime':
-                        cell.textContent = formatDuration(entry.totalTime);
+                        if (!displayedPeriods.has(entry.period)) {
+                            const cell = row.insertCell(cellIndex++);
+                            cell.textContent = formatDuration(entry.totalTime);
+                            let periodEntryCount = pageEntries.slice(index).filter(e => e.period === entry.period).length;
+                            cell.rowSpan = periodEntryCount;
+                        }
                         break;
                     case 'project':
-                        cell.textContent = entry.projectName;
+                        row.insertCell(cellIndex++).textContent = entry.projectName;
                         break;
                     case 'description':
-                        cell.textContent = entry.description || 'No description';
+                        row.insertCell(cellIndex++).textContent = entry.description || 'No description';
                         break;
                     case 'timeSpent':
-                        cell.textContent = formatDuration(entry.duration);
+                        row.insertCell(cellIndex++).textContent = formatDuration(entry.duration);
                         break;
                 }
             });
+
+            displayedPeriods.add(entry.period);
         });
     }
 
@@ -2355,34 +2370,81 @@ function exportReportAsPDF() {
         const { jsPDF } = jspdf;
         const doc = new jsPDF();
 
+        // Helper function to wrap text
+        function splitTextToSize(text, maxWidth) {
+            return doc.splitTextToSize(text, maxWidth);
+        }
+
         let yPos = 20;
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 10;
+        const usableWidth = pageWidth - 2 * margin;
+
         doc.setFontSize(18);
-        doc.text('Time Tracker Report', 14, yPos);
+        doc.text('Time Tracker Report', margin, yPos);
         yPos += 10;
 
         doc.setFontSize(12);
         for (const [period, data] of Object.entries(currentReport)) {
+            // Check if we need a new page
+            if (yPos > pageHeight - 40) {
+                doc.addPage();
+                yPos = 20;
+            }
+
             doc.setFont(undefined, 'bold');
-            doc.text(`Period: ${period}`, 14, yPos);
+            doc.text(`Period: ${period}`, margin, yPos);
             yPos += 7;
-            doc.text(`Total Time: ${formatDuration(data.total)}`, 14, yPos);
+            doc.text(`Total Time: ${formatDuration(data.total)}`, margin, yPos);
             yPos += 10;
 
             doc.setFont(undefined, 'normal');
-            data.entries.forEach(entry => {
-                const text = `${entry.description || 'No description'} - ${formatDuration(entry.duration)} - ${entry.projectName}`;
-                const textLines = doc.splitTextToSize(text, 180);
-                textLines.forEach(line => {
-                    if (yPos > 280) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    doc.text(line, 14, yPos);
-                    yPos += 7;
-                });
-                yPos += 3;
-            });
+            
+            // Set up columns
+            const colWidths = [usableWidth * 0.5, usableWidth * 0.2, usableWidth * 0.3];
+            const startX = margin;
+
+            // Table header
+            doc.setFillColor(240, 240, 240);
+            doc.rect(startX, yPos, usableWidth, 8, 'F');
+            doc.setTextColor(0);
+            doc.text('Description', startX + 2, yPos + 6);
+            doc.text('Time Spent', startX + colWidths[0] + 2, yPos + 6);
+            doc.text('Project', startX + colWidths[0] + colWidths[1] + 2, yPos + 6);
             yPos += 10;
+
+            // Table rows
+            data.entries.forEach(entry => {
+                const descLines = splitTextToSize(entry.description || 'No description', colWidths[0] - 4);
+                const lineHeight = 7;
+
+                // Check if we need a new page
+                if (yPos + descLines.length * lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Description
+                descLines.forEach((line, index) => {
+                    doc.text(line, startX + 2, yPos + 5 + (index * lineHeight));
+                });
+
+                // Time Spent
+                doc.text(formatDuration(entry.duration), startX + colWidths[0] + 2, yPos + 5);
+
+                // Project
+                doc.text(entry.projectName, startX + colWidths[0] + colWidths[1] + 2, yPos + 5);
+
+                // Draw cell borders
+                doc.rect(startX, yPos, colWidths[0], descLines.length * lineHeight);
+                doc.rect(startX + colWidths[0], yPos, colWidths[1], descLines.length * lineHeight);
+                doc.rect(startX + colWidths[0] + colWidths[1], yPos, colWidths[2], descLines.length * lineHeight);
+
+                yPos += descLines.length * lineHeight;
+            });
+
+            yPos += 10; // Space between periods
         }
 
         doc.save('time_tracker_report.pdf');
@@ -2392,6 +2454,7 @@ function exportReportAsPDF() {
         alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded and try again.');
     }
 }
+
 function debugJsPDF() {
     if (typeof jspdf !== 'undefined') {
         console.log('jsPDF is loaded correctly');
