@@ -1991,11 +1991,18 @@ function startProjectRangeSelection(event) {
 function generateReport() {
   const reportType = document.getElementById('reportType').value;
   const startDate = new Date(document.getElementById('reportStartDate').value);
+  startDate.setHours(0, 0, 0, 0); // Set to start of day
   const endDate = new Date(document.getElementById('reportEndDate').value);
+  endDate.setHours(23, 59, 59, 999); // Set to end of day
   const selectedProjects = Array.from(document.querySelectorAll('#projectSelection input:checked')).map(cb => parseInt(cb.value));
 
   if (selectedProjects.length === 0) {
     alert('Please select at least one project.');
+    return;
+  }
+
+  if (startDate > endDate) {
+    alert('Start date cannot be after end date.');
     return;
   }
 
@@ -2016,12 +2023,17 @@ function generateReport() {
       
       const filteredEntries = allTimeEntries.filter(entry => 
         selectedProjects.includes(entry.projectId) &&
-        new Date(entry.start) >= startDate &&
-        new Date(entry.end) <= endDate
+        new Date(entry.start) <= endDate &&
+        new Date(entry.end) >= startDate
       ).map(entry => ({
         ...entry,
         projectName: projectMap.get(entry.projectId)
       }));
+
+      if (filteredEntries.length === 0) {
+        alert('No time entries found for the selected criteria.');
+        return;
+      }
 
       let report;
       if (reportType === 'weekly') {
@@ -2031,6 +2043,9 @@ function generateReport() {
       }
 
       displayReport(report, selectedProjects.length > 1);
+    }).catch(error => {
+      console.error('Error generating report:', error);
+      alert('An error occurred while generating the report. Please try again.');
     });
   });
 }
