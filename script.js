@@ -1885,20 +1885,27 @@ function initializeProjectSelection() {
     const projectSelection = document.getElementById('projectSelection');
     let isMouseDown = false;
     let startElement = null;
+    let dragStarted = false;
 
     projectSelection.addEventListener('mousedown', (e) => {
         isMouseDown = true;
         startElement = e.target.closest('.project-checkbox-wrapper');
+        dragStarted = false;  // Reset drag state
+
         if (startElement) {
+            // Toggle checkbox on mousedown (for single click selection)
             const checkbox = startElement.querySelector('input[type="checkbox"]');
             checkbox.checked = !checkbox.checked;
         }
     });
 
     projectSelection.addEventListener('mousemove', (e) => {
-        if (!isMouseDown) return;
+        if (!isMouseDown) return;  // Do nothing if mouse is not down
 
+        dragStarted = true;  // Drag operation is starting
         const currentElement = e.target.closest('.project-checkbox-wrapper');
+
+        // If we've moved to a new element, toggle its checkbox
         if (currentElement && currentElement !== startElement) {
             const checkbox = currentElement.querySelector('input[type="checkbox"]');
             checkbox.checked = !checkbox.checked;
@@ -1906,9 +1913,18 @@ function initializeProjectSelection() {
         }
     });
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', (e) => {
         isMouseDown = false;
+
+        // If no drag occurred (simple click), ensure the checkbox is toggled correctly
+        if (!dragStarted && startElement) {
+            const checkbox = startElement.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;  // Toggle again to undo extra toggle from mousedown
+        }
+
+        // Reset drag status and startElement
         startElement = null;
+        dragStarted = false;
     });
 
     // Prevent text selection during drag
