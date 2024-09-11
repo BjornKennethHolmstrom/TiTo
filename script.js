@@ -1842,43 +1842,78 @@ function initializeReportFeature() {
   generateButton.addEventListener('click', generateReport);
   selectAllButton.addEventListener('click', selectAllProjects);
   deselectAllButton.addEventListener('click', deselectAllProjects);
-
-  // Add event listener for range selection
-  const projectSelection = document.getElementById('projectSelection');
-  projectSelection.addEventListener('mousedown', startProjectRangeSelection);
 }
 
 function populateProjectSelection() {
-  const projectSelection = document.getElementById('projectSelection');
-  projectSelection.innerHTML = ''; // Clear existing checkboxes
+    const projectSelection = document.getElementById('projectSelection');
+    projectSelection.innerHTML = ''; // Clear existing checkboxes
 
-  dbReady.then(() => {
-    let transaction = db.transaction(['projects'], 'readonly');
-    let store = transaction.objectStore('projects');
-    let request = store.getAll();
+    dbReady.then(() => {
+        let transaction = db.transaction(['projects'], 'readonly');
+        let store = transaction.objectStore('projects');
+        let request = store.getAll();
 
-    request.onsuccess = function(event) {
-      const projects = event.target.result;
-      projects.forEach((project, index) => {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `project-${project.id}`;
-        checkbox.value = project.id;
-        checkbox.dataset.index = index;
+        request.onsuccess = function(event) {
+            const projects = event.target.result;
+            projects.forEach((project) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'project-checkbox-wrapper';
 
-        const label = document.createElement('label');
-        label.htmlFor = `project-${project.id}`;
-        label.textContent = project.name;
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `project-${project.id}`;
+                checkbox.value = project.id;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'project-checkbox-wrapper';
-        wrapper.appendChild(checkbox);
-        wrapper.appendChild(label);
+                const label = document.createElement('label');
+                label.htmlFor = `project-${project.id}`;
+                label.textContent = project.name;
 
-        projectSelection.appendChild(wrapper);
-      });
-    };
-  });
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(label);
+                projectSelection.appendChild(wrapper);
+            });
+
+            initializeProjectSelection();
+        };
+    });
+}
+
+function initializeProjectSelection() {
+    const projectSelection = document.getElementById('projectSelection');
+    let isMouseDown = false;
+    let startElement = null;
+
+    projectSelection.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        startElement = e.target.closest('.project-checkbox-wrapper');
+        if (startElement) {
+            const checkbox = startElement.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+
+    projectSelection.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+
+        const currentElement = e.target.closest('.project-checkbox-wrapper');
+        if (currentElement && currentElement !== startElement) {
+            const checkbox = currentElement.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            startElement = currentElement;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isMouseDown = false;
+        startElement = null;
+    });
+
+    // Prevent text selection during drag
+    projectSelection.addEventListener('selectstart', (e) => {
+        if (isMouseDown) {
+            e.preventDefault();
+        }
+    });
 }
 
 function selectAllProjects() {
@@ -1892,36 +1927,58 @@ function deselectAllProjects() {
 }
 
 function startProjectRangeSelection(event) {
-  if (event.target.type !== 'checkbox') return;
+    event.preventDefault();
 
-  const projectSelection = document.getElementById('projectSelection');
-  const checkboxes = Array.from(projectSelection.querySelectorAll('input[type="checkbox"]'));
-  const startIndex = parseInt(event.target.dataset.index);
-  let lastChecked = startIndex;
+    const projectSelection = document.getElementById('projectSelection');
+    const wrappers = Array.from(projectSelection.querySelectorAll('.project-checkbox-wrapper'));
+    const startWrapper = event.target.closest('.project-checkbox-wrapper');
+    if (!startWrapper) return;
 
-  function rangeSelect(e) {
-    if (e.target.type !== 'checkbox') return;
-    
-    const currentIndex = parseInt(e.target.dataset.index);
-    const start = Math.min(startIndex, currentIndex);
-    const end = Math.max(startIndex, currentIndex);
-    
-    checkboxes.forEach((checkbox, index) => {
-      if (index >= start && index <= end) {
-        checkbox.checked = e.target.checked;
-      }
-    });
+    const startIndex = wrappers.indexOf(startWrapper);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const moveThreshold = 5; // pixels
+    let isDragging = false;
 
-    lastChecked = currentIndex;
-  }
+    function rangeSelect(e) {
+        if (!isDragging) {
+            const deltaX = Math.abs(e.clientX - startX);
+            const deltaY = Math.abs(e.clientY - startY);
+            if (deltaX > moveThreshold || deltaY > moveThreshold) {
+                isDragging = true;
+            } else {
+                return;
+            }
+        }
 
-  function stopRangeSelect() {
-    projectSelection.removeEventListener('mouseover', rangeSelect);
-    document.removeEventListener('mouseup', stopRangeSelect);
-  }
+        const currentWrapper = e.target.closest('.project-checkbox-wrapper');
+        if (!currentWrapper) return;
 
-  projectSelection.addEventListener('mouseover', rangeSelect);
-  document.addEventListener('mouseup', stopRangeSelect);
+        const currentIndex = wrappers.indexOf(currentWrapper);
+        const start = Math.min(startIndex, currentIndex);
+        const end = Math.max(startIndex, currentIndex);
+
+        wrappers.forEach((wrapper, index) => {
+            const checkbox = wrapper.querySelector('input[type="checkbox"]');
+            if (index >= start && index <= end) {
+                checkbox.checked = !checkbox.checked;
+            }
+        });
+    }
+
+    function stopRangeSelect(e) {
+        projectSelection.removeEventListener('mousemove', rangeSelect);
+        document.removeEventListener('mouseup', stopRangeSelect);
+
+        if (!isDragging) {
+            // It's a click, toggle the checkbox
+            const checkbox = startWrapper.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+        }
+    }
+
+    projectSelection.addEventListener('mousemove', rangeSelect);
+    document.addEventListener('mouseup', stopRangeSelect);
 }
 
 function generateReport() {
