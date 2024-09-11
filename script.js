@@ -2030,10 +2030,6 @@ function generateReport() {
         report = generateMonthlyReport(filteredEntries, startDate, endDate);
       }
 
-      // Set the global report data
-      window.currentReport = report;
-
-      // Display the report
       displayReport(report, selectedProjects.length > 1);
     });
   });
@@ -2144,9 +2140,6 @@ function generateMonthlyReport(entries, startDate, endDate) {
 }
 
 function displayReport(report, showProjectColumn) {
-  // Ensure the global report data is set
-  window.currentReport = report;
-
   const reportResults = document.getElementById('reportResults');
   reportResults.innerHTML = ''; // Clear previous results
 
@@ -2170,27 +2163,27 @@ function displayReport(report, showProjectColumn) {
     // Add a row for the period summary
     const summaryRow = table.insertRow();
     
-    summaryRow.insertCell().textContent = period;
-    summaryRow.insertCell().textContent = formatDuration(data.total);
-    summaryRow.insertCell().textContent = 'Period Total';
-    summaryRow.insertCell().textContent = formatDuration(data.total);
-    if (showProjectColumn) {
-      summaryRow.insertCell().textContent = 'Multiple';
-    }
-    
-    summaryRow.classList.add('period-summary');
+    const periodCell = summaryRow.insertCell();
+    periodCell.textContent = period;
+    periodCell.rowSpan = data.entries.length + 1; // +1 for the summary row itself
+
+    const totalCell = summaryRow.insertCell();
+    totalCell.textContent = formatDuration(data.total);
+    totalCell.rowSpan = data.entries.length + 1;
 
     // Add rows for each entry
-    data.entries.forEach((entry) => {
-      const row = table.insertRow();
+    data.entries.forEach((entry, index) => {
+      const row = index === 0 ? summaryRow : table.insertRow();
 
-      row.insertCell().textContent = ''; // Empty cell for period
-      row.insertCell().textContent = ''; // Empty cell for total time
-      row.insertCell().textContent = entry.description || 'No description';
-      row.insertCell().textContent = formatDuration(entry.duration);
-      
+      const descriptionCell = row.insertCell();
+      descriptionCell.textContent = entry.description || 'No description';
+
+      const timeSpentCell = row.insertCell();
+      timeSpentCell.textContent = formatDuration(entry.duration);
+
       if (showProjectColumn) {
-        row.insertCell().textContent = entry.projectName;
+        const projectCell = row.insertCell();
+        projectCell.textContent = entry.projectName;
       }
     });
   }
