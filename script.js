@@ -2042,6 +2042,10 @@ function generateReport() {
         report = generateMonthlyReport(filteredEntries, startDate, endDate);
       }
 
+      // Set the global report data
+      window.currentReport = report;
+
+      // Display the report
       displayReport(report, selectedProjects.length > 1);
     });
   });
@@ -2152,8 +2156,13 @@ function generateMonthlyReport(entries, startDate, endDate) {
 }
 
 function displayReport(report, showProjectColumn) {
+  // Ensure the global report data is set
+  window.currentReport = report;
+
   const reportResults = document.getElementById('reportResults');
   reportResults.innerHTML = ''; // Clear previous results
+
+  addExportButtons(); // Add export buttons
 
   const table = document.createElement('table');
   table.className = 'report-table';
@@ -2199,6 +2208,110 @@ function displayReport(report, showProjectColumn) {
   }
 
   reportResults.appendChild(table);
+}
+
+function exportReportAsCSV(report) {
+    let csvContent = "Period,Total Time,Description,Time Spent,Project\n";
+
+    for (const [period, data] of Object.entries(report)) {
+        data.entries.forEach(entry => {
+            csvContent += `"${period}","${formatDuration(data.total)}","${entry.description || 'No description'}","${formatDuration(entry.duration)}","${entry.projectName}"\n`;
+        });
+    }
+
+    downloadFile(csvContent, 'time_tracker_report.csv', 'text/csv;charset=utf-8;');
+}
+
+function exportReportAsPDF(report) {
+    // We'll use jsPDF library for PDF generation
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let yPos = 20;
+    doc.setFontSize(18);
+    doc.text('Time Tracker Report', 14, yPos);
+    yPos += 10;
+
+    doc.setFontSize(12);
+    for (const [period, data] of Object.entries(report)) {
+        doc.setFontStyle('bold');
+        doc.text(`Period: ${period}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Total Time: ${formatDuration(data.total)}`, 14, yPos);
+        yPos += 10;
+
+        doc.setFontStyle('normal');
+        data.entries.forEach(entry => {
+            doc.text(`${entry.description || 'No description'} - ${formatDuration(entry.duration)} - ${entry.projectName}`, 14, yPos);
+            yPos += 7;
+
+            if (yPos > 280) {
+                doc.addPage();
+                yPos = 20;
+            }
+        });
+        yPos += 10;
+    }
+
+    doc.save('time_tracker_report.pdf');
+}
+
+function exportReportAsMarkdown(report) {
+    let mdContent = "# Time Tracker Report\n\n";
+
+    for (const [period, data] of Object.entries(report)) {
+        mdContent += `## ${period}\n\n`;
+        mdContent += `**Total Time:** ${formatDuration(data.total)}\n\n`;
+        mdContent += "| Description | Time Spent | Project |\n";
+        mdContent += "|-------------|------------|--------|\n";
+        data.entries.forEach(entry => {
+            mdContent += `| ${entry.description || 'No description'} | ${formatDuration(entry.duration)} | ${entry.projectName} |\n`;
+        });
+        mdContent += "\n";
+    }
+
+    downloadFile(mdContent, 'time_tracker_report.md', 'text/markdown;charset=utf-8;');
+}
+
+function downloadFile(content, fileName, mimeType) {
+    const blob = new Blob([content], {type: mimeType});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function addExportButtons() {
+    const reportResults = document.getElementById('reportResults');
+    const exportButtonsContainer = document.createElement('div');
+    exportButtonsContainer.className = 'export-buttons';
+
+    const formats = [
+        { name: 'CSV', func: exportReportAsCSV },
+        { name: 'PDF', func: exportReportAsPDF },
+        { name: 'Markdown', func: exportReportAsMarkdown }
+    ];
+
+    formats.forEach(format => {
+        const button = document.createElement('button');
+        button.textContent = `Export as ${format.name}`;
+        button.addEventListener('click', () => {
+            if (window.currentReport) {
+                format.func(window.currentReport);
+            } else {
+                console.error('No report data available for export');
+                alert('Please generate a report before exporting.');
+            }
+        });
+        exportButtonsContainer.appendChild(button);
+    });
+
+    reportResults.insertBefore(exportButtonsContainer, reportResults.firstChild);
+}
+
+function debugReportData() {
+  console.log('Current report data:', window.currentReport);
 }
 
 /* Database operations */
