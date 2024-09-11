@@ -2087,7 +2087,7 @@ function generateReport(selectedColumns) {
                 report = generateMonthlyReport(filteredEntries, startDate, endDate);
             }
 
-            currentReport = report;  // Set the global currentReport variable
+            currentReport = report;
             displayReport(report, selectedColumns);
         }).catch(error => {
             console.error('Error generating report:', error);
@@ -2187,131 +2187,117 @@ function generateMonthlyReport(entries, startDate, endDate) {
     return report;
 }
 
-function displayReport(report, selectedColumns, showProjectColumn) {
-  const reportResults = document.getElementById('reportResults');
-  reportResults.innerHTML = ''; // Clear previous results
+function displayReport(report, selectedColumns) {
+    const reportResults = document.getElementById('reportResults');
+    reportResults.innerHTML = ''; // Clear previous results
 
-  addExportButtons();
+    addExportButtons();
 
-  const table = document.createElement('table');
-  table.className = 'report-table';
+    const table = document.createElement('table');
+    table.className = 'report-table';
 
-  // Create table header
-  const headerRow = table.insertRow();
-  const headers = selectedColumns.map(column => {
-    switch(column) {
-      case 'period': return 'Period';
-      case 'totalTime': return 'Total Time';
-      case 'description': return 'Description';
-      case 'timeSpent': return 'Time Spent';
-      case 'project': return 'Project';
-      default: return '';
-    }
-  });
-  headers.forEach(text => {
-    const th = document.createElement('th');
-    th.textContent = text;
-    headerRow.appendChild(th);
-  });
-
-  const entriesPerPage = 20;
-  let currentPage = 1;
-  const totalEntries = Object.values(report).reduce((sum, period) => sum + period.entries.length, 0);
-  const totalPages = Math.ceil(totalEntries / entriesPerPage);
-
-  function renderPage(page) {
-    let entryCount = 0;
-
-    // Clear existing rows except header
-    while (table.rows.length > 1) {
-      table.deleteRow(1);
-    }
-
-    for (const [period, data] of Object.entries(report)) {
-      for (let i = 0; i < data.entries.length; i++) {
-        if (entryCount >= (page - 1) * entriesPerPage && entryCount < page * entriesPerPage) {
-          const entry = data.entries[i];
-          const row = table.insertRow();
-
-          selectedColumns.forEach(column => {
-            switch(column) {
-              case 'period':
-                if (i === 0) {
-                  const cell = row.insertCell();
-                  cell.textContent = period;
-                  cell.rowSpan = data.entries.length;
-                }
-                break;
-              case 'totalTime':
-                if (i === 0) {
-                  const cell = row.insertCell();
-                  cell.textContent = formatDuration(data.total);
-                  cell.rowSpan = data.entries.length;
-                }
-                break;
-              case 'description':
-                const descriptionCell = row.insertCell();
-                descriptionCell.textContent = entry.description || 'No description';
-                break;
-              case 'timeSpent':
-                const timeSpentCell = row.insertCell();
-                timeSpentCell.textContent = formatDuration(entry.duration);
-                break;
-              case 'project':
-                if (showProjectColumn) {
-                  const projectCell = row.insertCell();
-                  projectCell.textContent = entry.projectName;
-                }
-                break;
-            }
-          });
+    // Create table header
+    const headerRow = table.insertRow();
+    selectedColumns.forEach(column => {
+        const th = document.createElement('th');
+        switch(column) {
+            case 'period': th.textContent = 'Period'; break;
+            case 'totalTime': th.textContent = 'Total Time'; break;
+            case 'project': th.textContent = 'Project'; break;
+            case 'description': th.textContent = 'Description'; break;
+            case 'timeSpent': th.textContent = 'Time Spent'; break;
         }
-        entryCount++;
-      }
+        headerRow.appendChild(th);
+    });
+
+    // Flatten the report data for pagination
+    let allEntries = [];
+    for (const [period, data] of Object.entries(report)) {
+        data.entries.forEach(entry => {
+            allEntries.push({ period, totalTime: data.total, ...entry });
+        });
     }
-  }
 
-  renderPage(currentPage);
+    const entriesPerPage = 20;
+    let currentPage = 1;
+    const totalPages = Math.ceil(allEntries.length / entriesPerPage);
 
-  // Add pagination controls
-  const paginationControls = document.createElement('div');
-  paginationControls.className = 'pagination-controls';
+    function renderPage(page) {
+        // Clear existing rows except header
+        while (table.rows.length > 1) {
+            table.deleteRow(1);
+        }
 
-  const prevButton = document.createElement('button');
-  prevButton.textContent = 'Previous';
-  prevButton.onclick = () => {
-    if (currentPage > 1) {
-      currentPage--;
-      renderPage(currentPage);
-      updatePaginationControls();
+        const start = (page - 1) * entriesPerPage;
+        const end = start + entriesPerPage;
+        const pageEntries = allEntries.slice(start, end);
+
+        pageEntries.forEach(entry => {
+            const row = table.insertRow();
+            selectedColumns.forEach(column => {
+                const cell = row.insertCell();
+                switch(column) {
+                    case 'period':
+                        cell.textContent = entry.period;
+                        break;
+                    case 'totalTime':
+                        cell.textContent = formatDuration(entry.totalTime);
+                        break;
+                    case 'project':
+                        cell.textContent = entry.projectName;
+                        break;
+                    case 'description':
+                        cell.textContent = entry.description || 'No description';
+                        break;
+                    case 'timeSpent':
+                        cell.textContent = formatDuration(entry.duration);
+                        break;
+                }
+            });
+        });
     }
-  };
 
-  const nextButton = document.createElement('button');
-  nextButton.textContent = 'Next';
-  nextButton.onclick = () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      renderPage(currentPage);
-      updatePaginationControls();
+    renderPage(currentPage);
+
+    // Add pagination controls
+    const paginationControls = document.createElement('div');
+    paginationControls.className = 'pagination-controls';
+
+    const prevButton = document.createElement('button');
+    prevButton.textContent = 'Previous';
+    prevButton.onclick = () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderPage(currentPage);
+            updatePaginationControls();
+        }
+    };
+
+    const nextButton = document.createElement('button');
+    nextButton.textContent = 'Next';
+    nextButton.onclick = () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderPage(currentPage);
+            updatePaginationControls();
+        }
+    };
+
+    const pageInfo = document.createElement('span');
+    paginationControls.appendChild(prevButton);
+    paginationControls.appendChild(pageInfo);
+    paginationControls.appendChild(nextButton);
+
+    function updatePaginationControls() {
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        prevButton.disabled = currentPage === 1;
+        nextButton.disabled = currentPage === totalPages;
     }
-  };
 
-  const pageInfo = document.createElement('span');
-  paginationControls.appendChild(prevButton);
-  paginationControls.appendChild(pageInfo);
-  paginationControls.appendChild(nextButton);
+    updatePaginationControls();
 
-  function updatePaginationControls() {
-    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-    prevButton.disabled = currentPage === 1;
-    nextButton.disabled = currentPage === totalPages;
-  }
-
-  updatePaginationControls();
-
-  reportResults.appendChild(table);
-  reportResults.appendChild(paginationControls);
+    reportResults.appendChild(table);
+    reportResults.appendChild(paginationControls);
 }
 
 function exportReportAsCSV() {
