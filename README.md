@@ -15,6 +15,7 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 - Charts displaying time spent on different projects:
   - Overall time distribution
   - Time spent in selected date ranges
+- Monthly or weekly reports with export to CSV, PDF or markdown 
 - Date range selection for detailed data analysis
 - Local data storage using IndexedDB
 - Import/Export functionality for database backup and transfer

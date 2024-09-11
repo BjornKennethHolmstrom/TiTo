@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Unreleased
+
+### Features added and issues resolved
+
+1. Project Report Feature:
+   - Weekly and monthly reports
+   - Drag select of projects to include
+   - Export to CSV, PDF and Markdown
+
 ## TiTo 1.05
 
 ### Features added and issues resolved
