@@ -2089,12 +2089,16 @@ function generateReport() {
 function generateWeeklyReport(entries, startDate, endDate) {
     let report = {};
     let currentDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Ensure endDate is set to the end of the day
+    endDate.setHours(23, 59, 59, 999);
 
     while (currentDate <= endDate) {
         let weekStart = new Date(currentDate);
-        let weekEnd = new Date(currentDate);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        weekEnd.setHours(23, 59, 59, 999);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Set to Sunday
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6, 23, 59, 59, 999); // Set to Saturday end of day
 
         // Adjust weekEnd if it's beyond the overall endDate
         if (weekEnd > endDate) {
@@ -2104,24 +2108,22 @@ function generateWeeklyReport(entries, startDate, endDate) {
         let weekEntries = entries.filter(entry => {
             let entryStart = new Date(entry.start);
             let entryEnd = new Date(entry.end);
-            return (entryStart <= weekEnd && entryEnd >= weekStart);
+            return (
+                (entryStart >= weekStart && entryStart <= weekEnd) ||
+                (entryEnd >= weekStart && entryEnd <= weekEnd) ||
+                (entryStart <= weekStart && entryEnd >= weekEnd)
+            );
         });
 
         let weekTotal = weekEntries.reduce((total, entry) => {
-            let entryStart = new Date(Math.max(entry.start, weekStart.getTime()));
-            let entryEnd = new Date(Math.min(entry.end, weekEnd.getTime()));
-            return total + (entryEnd - entryStart);
+            return total + entry.duration;
         }, 0);
 
         let weekKey = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
 
         report[weekKey] = {
             total: weekTotal,
-            entries: weekEntries.map(entry => ({
-                ...entry,
-                adjustedStart: new Date(Math.max(entry.start, weekStart.getTime())),
-                adjustedEnd: new Date(Math.min(entry.end, weekEnd.getTime()))
-            }))
+            entries: weekEntries
         };
 
         currentDate.setDate(currentDate.getDate() + 7); // Move to next week
@@ -2133,6 +2135,10 @@ function generateWeeklyReport(entries, startDate, endDate) {
 function generateMonthlyReport(entries, startDate, endDate) {
     let report = {};
     let currentDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Ensure endDate is set to the end of the day
+    endDate.setHours(23, 59, 59, 999);
 
     while (currentDate <= endDate) {
         let monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -2146,24 +2152,22 @@ function generateMonthlyReport(entries, startDate, endDate) {
         let monthEntries = entries.filter(entry => {
             let entryStart = new Date(entry.start);
             let entryEnd = new Date(entry.end);
-            return (entryStart <= monthEnd && entryEnd >= monthStart);
+            return (
+                (entryStart >= monthStart && entryStart <= monthEnd) ||
+                (entryEnd >= monthStart && entryEnd <= monthEnd) ||
+                (entryStart <= monthStart && entryEnd >= monthEnd)
+            );
         });
 
         let monthTotal = monthEntries.reduce((total, entry) => {
-            let entryStart = new Date(Math.max(entry.start, monthStart.getTime()));
-            let entryEnd = new Date(Math.min(entry.end, monthEnd.getTime()));
-            return total + (entryEnd - entryStart);
+            return total + entry.duration;
         }, 0);
 
         let monthKey = `${monthStart.toLocaleString('default', { month: 'long' })} ${monthStart.getFullYear()}`;
 
         report[monthKey] = {
             total: monthTotal,
-            entries: monthEntries.map(entry => ({
-                ...entry,
-                adjustedStart: new Date(Math.max(entry.start, monthStart.getTime())),
-                adjustedEnd: new Date(Math.min(entry.end, monthEnd.getTime()))
-            }))
+            entries: monthEntries
         };
 
         currentDate.setMonth(currentDate.getMonth() + 1); // Move to next month
@@ -2176,7 +2180,7 @@ function displayReport(report, showProjectColumn) {
   const reportResults = document.getElementById('reportResults');
   reportResults.innerHTML = ''; // Clear previous results
 
-  addExportButtons(); // Add export buttons
+  addExportButtons();
 
   const table = document.createElement('table');
   table.className = 'report-table';
@@ -2191,37 +2195,92 @@ function displayReport(report, showProjectColumn) {
     headerRow.appendChild(th);
   });
 
-  // Create table body
-  for (const [period, data] of Object.entries(report)) {
-    // Add a row for the period summary
-    const summaryRow = table.insertRow();
-    
-    const periodCell = summaryRow.insertCell();
-    periodCell.textContent = period;
-    periodCell.rowSpan = data.entries.length + 1; // +1 for the summary row itself
+  const entriesPerPage = 20;
+  let currentPage = 1;
+  const totalEntries = Object.values(report).reduce((sum, period) => sum + period.entries.length, 0);
+  const totalPages = Math.ceil(totalEntries / entriesPerPage);
 
-    const totalCell = summaryRow.insertCell();
-    totalCell.textContent = formatDuration(data.total);
-    totalCell.rowSpan = data.entries.length + 1;
+  function renderPage(page) {
+    let entryCount = 0;
 
-    // Add rows for each entry
-    data.entries.forEach((entry, index) => {
-      const row = index === 0 ? summaryRow : table.insertRow();
+    // Clear existing rows except header
+    while (table.rows.length > 1) {
+      table.deleteRow(1);
+    }
 
-      const descriptionCell = row.insertCell();
-      descriptionCell.textContent = entry.description || 'No description';
+    for (const [period, data] of Object.entries(report)) {
+      for (let i = 0; i < data.entries.length; i++) {
+        if (entryCount >= (page - 1) * entriesPerPage && entryCount < page * entriesPerPage) {
+          const entry = data.entries[i];
+          const row = table.insertRow();
 
-      const timeSpentCell = row.insertCell();
-      timeSpentCell.textContent = formatDuration(entry.duration);
+          if (i === 0) {
+            const periodCell = row.insertCell();
+            periodCell.textContent = period;
+            periodCell.rowSpan = data.entries.length;
 
-      if (showProjectColumn) {
-        const projectCell = row.insertCell();
-        projectCell.textContent = entry.projectName;
+            const totalCell = row.insertCell();
+            totalCell.textContent = formatDuration(data.total);
+            totalCell.rowSpan = data.entries.length;
+          }
+
+          const descriptionCell = row.insertCell();
+          descriptionCell.textContent = entry.description || 'No description';
+
+          const timeSpentCell = row.insertCell();
+          timeSpentCell.textContent = formatDuration(entry.duration);
+
+          if (showProjectColumn) {
+            const projectCell = row.insertCell();
+            projectCell.textContent = entry.projectName;
+          }
+        }
+        entryCount++;
       }
-    });
+    }
   }
 
+  renderPage(currentPage);
+
+  // Add pagination controls
+  const paginationControls = document.createElement('div');
+  paginationControls.className = 'pagination-controls';
+
+  const prevButton = document.createElement('button');
+  prevButton.textContent = 'Previous';
+  prevButton.onclick = () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderPage(currentPage);
+      updatePaginationControls();
+    }
+  };
+
+  const nextButton = document.createElement('button');
+  nextButton.textContent = 'Next';
+  nextButton.onclick = () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderPage(currentPage);
+      updatePaginationControls();
+    }
+  };
+
+  const pageInfo = document.createElement('span');
+  paginationControls.appendChild(prevButton);
+  paginationControls.appendChild(pageInfo);
+  paginationControls.appendChild(nextButton);
+
+  function updatePaginationControls() {
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage === totalPages;
+  }
+
+  updatePaginationControls();
+
   reportResults.appendChild(table);
+  reportResults.appendChild(paginationControls);
 }
 
 function exportReportAsCSV(report) {
