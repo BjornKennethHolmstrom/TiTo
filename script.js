@@ -39,6 +39,7 @@ let entriesPerPage = 10;
 let isAllEntries = false;
 let totalPages = 1;
 let dragSrcEl = null;
+let currentReport = null;
 
 /* Initialization functions */
 document.addEventListener('DOMContentLoaded', function() {
@@ -2024,7 +2025,7 @@ function startProjectRangeSelection(event) {
     document.addEventListener('mouseup', stopRangeSelect);
 }
 
-function generateReport() {
+function generateReport(selectedColumns = ['period', 'totalTime', 'description', 'timeSpent', 'project']) {
   const reportType = document.getElementById('reportType').value;
   const startDate = new Date(document.getElementById('reportStartDate').value);
   startDate.setHours(0, 0, 0, 0); // Set to start of day
@@ -2068,6 +2069,7 @@ function generateReport() {
 
       if (filteredEntries.length === 0) {
         alert('No time entries found for the selected criteria.');
+        currentReport = null;
         return;
       }
 
@@ -2078,10 +2080,12 @@ function generateReport() {
         report = generateMonthlyReport(filteredEntries, startDate, endDate);
       }
 
-      displayReport(report, selectedProjects.length > 1);
+      currentReport = report;  // Set the global currentReport variable
+      displayReport(report, selectedColumns);
     }).catch(error => {
       console.error('Error generating report:', error);
       alert('An error occurred while generating the report. Please try again.');
+      currentReport = null;
     });
   });
 }
@@ -2283,10 +2287,15 @@ function displayReport(report, showProjectColumn) {
   reportResults.appendChild(paginationControls);
 }
 
-function exportReportAsCSV(report) {
+function exportReportAsCSV() {
+    if (!currentReport) {
+        alert('Please generate a report before exporting.');
+        return;
+    }
+
     let csvContent = "Period,Total Time,Description,Time Spent,Project\n";
 
-    for (const [period, data] of Object.entries(report)) {
+    for (const [period, data] of Object.entries(currentReport)) {
         data.entries.forEach(entry => {
             const row = [
                 period,
@@ -2319,7 +2328,12 @@ function exportReportAsCSV(report) {
     }
 }
 
-function exportReportAsPDF(report) {
+function exportReportAsPDF() {
+    if (!currentReport) {
+        alert('Please generate a report before exporting.');
+        return;
+    }
+
     try {
         if (typeof jspdf === 'undefined') {
             throw new Error('jsPDF library is not loaded');
@@ -2334,7 +2348,7 @@ function exportReportAsPDF(report) {
         yPos += 10;
 
         doc.setFontSize(12);
-        for (const [period, data] of Object.entries(report)) {
+        for (const [period, data] of Object.entries(currentReport)) {
             doc.setFont(undefined, 'bold');
             doc.text(`Period: ${period}`, 14, yPos);
             yPos += 7;
@@ -2365,7 +2379,6 @@ function exportReportAsPDF(report) {
         alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded and try again.');
     }
 }
-
 function debugJsPDF() {
     if (typeof jspdf !== 'undefined') {
         console.log('jsPDF is loaded correctly');
@@ -2375,10 +2388,15 @@ function debugJsPDF() {
     }
 }
 
-function exportReportAsMarkdown(report) {
+function exportReportAsMarkdown() {
+    if (!currentReport) {
+        alert('Please generate a report before exporting.');
+        return;
+    }
+
     let mdContent = "# Time Tracker Report\n\n";
 
-    for (const [period, data] of Object.entries(report)) {
+    for (const [period, data] of Object.entries(currentReport)) {
         mdContent += `## ${period}\n\n`;
         mdContent += `**Total Time:** ${formatDuration(data.total)}\n\n`;
         mdContent += "| Description | Time Spent | Project |\n";
@@ -2389,7 +2407,17 @@ function exportReportAsMarkdown(report) {
         mdContent += "\n";
     }
 
-    downloadFile(mdContent, 'time_tracker_report.md', 'text/markdown;charset=utf-8;');
+    try {
+        const blob = new Blob([mdContent], {type: 'text/markdown;charset=utf-8;'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'time_tracker_report.md';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    } catch (error) {
+        console.error('Error exporting Markdown:', error);
+        alert('An error occurred while exporting the Markdown. Please try again.');
+    }
 }
 
 function downloadFile(content, fileName, mimeType) {
@@ -2415,19 +2443,7 @@ function addExportButtons() {
     formats.forEach(format => {
         const button = document.createElement('button');
         button.textContent = `Export as ${format.name}`;
-        button.addEventListener('click', () => {
-            if (window.currentReport) {
-                try {
-                    format.func(window.currentReport);
-                } catch (error) {
-                    console.error(`Error exporting as ${format.name}:`, error);
-                    alert(`An error occurred while exporting as ${format.name}. Please check the console for more information.`);
-                }
-            } else {
-                console.error('No report data available for export');
-                alert('Please generate a report before exporting.');
-            }
-        });
+        button.addEventListener('click', format.func);
         exportButtonsContainer.appendChild(button);
     });
 
