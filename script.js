@@ -2494,6 +2494,10 @@ function addColumnSelection() {
         { id: 'project', name: 'Project', checked: true }
     ];
 
+    const columnSelectionTitle = document.createElement('h4');
+    columnSelectionTitle.textContent = 'Select columns to display:';
+    columnSelection.appendChild(columnSelectionTitle);
+
     columns.forEach(column => {
         const label = document.createElement('label');
         const checkbox = document.createElement('input');

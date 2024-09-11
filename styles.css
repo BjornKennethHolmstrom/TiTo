@@ -664,6 +664,23 @@ li button {
   border-radius: 4px;
 }
 
+.report-controls input[type="date"] {
+    width: 150px;  /* Increased from default. Adjust as needed */
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Ensure consistent styling across browsers */
+.report-controls input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: 0.5em;
+}
+
+/* Adjust spacing between date inputs if needed */
+.report-controls input[type="date"] + input[type="date"] {
+    margin-left: 10px;
+}
 
 #projectSelectionControls {
   margin-bottom: 10px;
@@ -690,6 +707,11 @@ li button {
   margin-right: 5px;
 }
 
+#generateReport {
+    padding: 8px 15px;
+    font-size: 1.0em;
+}
+
 .project-checkbox-wrapper {
   display: flex;
   align-items: center;
@@ -707,15 +729,21 @@ li button {
 }
 
 .column-selection {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid #ddd;
+    margin-top: 10px;
+    padding-top: 5px;
+}
+
+.column-selection h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1em;
+    color: #555;
 }
 
 .column-selection label {
     display: inline-block;
     margin-right: 20px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .column-selection input[type="checkbox"] {
