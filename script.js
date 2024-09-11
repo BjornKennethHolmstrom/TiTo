@@ -1993,17 +1993,28 @@ function generateReport() {
   }
 
   dbReady.then(() => {
-    let transaction = db.transaction(['timeEntries'], 'readonly');
-    let store = transaction.objectStore('timeEntries');
-    let request = store.getAll();
+    let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
+    let timeEntryStore = transaction.objectStore('timeEntries');
+    let projectStore = transaction.objectStore('projects');
 
-    request.onsuccess = function(event) {
-      const allEntries = event.target.result;
-      const filteredEntries = allEntries.filter(entry => 
+    Promise.all([
+      new Promise((resolve) => {
+        timeEntryStore.getAll().onsuccess = (event) => resolve(event.target.result);
+      }),
+      new Promise((resolve) => {
+        projectStore.getAll().onsuccess = (event) => resolve(event.target.result);
+      })
+    ]).then(([allTimeEntries, allProjects]) => {
+      const projectMap = new Map(allProjects.map(p => [p.id, p.name]));
+      
+      const filteredEntries = allTimeEntries.filter(entry => 
         selectedProjects.includes(entry.projectId) &&
         new Date(entry.start) >= startDate &&
         new Date(entry.end) <= endDate
-      );
+      ).map(entry => ({
+        ...entry,
+        projectName: projectMap.get(entry.projectId)
+      }));
 
       let report;
       if (reportType === 'weekly') {
@@ -2012,8 +2023,8 @@ function generateReport() {
         report = generateMonthlyReport(filteredEntries, startDate, endDate);
       }
 
-      displayReport(report);
-    };
+      displayReport(report, selectedProjects.length > 1);
+    });
   });
 }
 
@@ -2121,7 +2132,7 @@ function generateMonthlyReport(entries, startDate, endDate) {
     return report;
 }
 
-function displayReport(report) {
+function displayReport(report, showProjectColumn) {
   const reportResults = document.getElementById('reportResults');
   reportResults.innerHTML = ''; // Clear previous results
 
@@ -2130,7 +2141,9 @@ function displayReport(report) {
 
   // Create table header
   const headerRow = table.insertRow();
-  ['Period', 'Total Time', 'Details'].forEach(text => {
+  const headers = ['Period', 'Total Time', 'Details'];
+  if (showProjectColumn) headers.push('Project');
+  headers.forEach(text => {
     const th = document.createElement('th');
     th.textContent = text;
     headerRow.appendChild(th);
@@ -2154,6 +2167,17 @@ function displayReport(report) {
       detailsList.appendChild(listItem);
     });
     detailsCell.appendChild(detailsList);
+
+    if (showProjectColumn) {
+      const projectCell = row.insertCell();
+      const projectList = document.createElement('ul');
+      data.entries.forEach(entry => {
+        const listItem = document.createElement('li');
+        listItem.textContent = entry.projectName;
+        projectList.appendChild(listItem);
+      });
+      projectCell.appendChild(projectList);
+    }
   }
 
   reportResults.appendChild(table);
