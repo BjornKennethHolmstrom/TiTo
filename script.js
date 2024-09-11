@@ -2097,9 +2097,6 @@ function generateReport(selectedColumns) {
     });
 }
 
-  // Use selectedColumns when creating the report
-  //displayReport(report, selectedColumns);
-
 function generateWeeklyReport(entries, startDate, endDate) {
     let report = {};
     let currentDate = new Date(startDate);

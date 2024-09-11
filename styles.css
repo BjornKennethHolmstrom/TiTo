@@ -706,6 +706,22 @@ li button {
   text-overflow: ellipsis;
 }
 
+.column-selection {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.column-selection label {
+    display: inline-block;
+    margin-right: 20px;
+    margin-bottom: 10px;
+}
+
+.column-selection input[type="checkbox"] {
+    margin-right: 5px;
+}
+
 .report-table {
   width: 100%;
   border-collapse: collapse;
