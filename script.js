@@ -2223,37 +2223,58 @@ function exportReportAsCSV(report) {
 }
 
 function exportReportAsPDF(report) {
-    // We'll use jsPDF library for PDF generation
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    try {
+        if (typeof jspdf === 'undefined') {
+            throw new Error('jsPDF library is not loaded');
+        }
 
-    let yPos = 20;
-    doc.setFontSize(18);
-    doc.text('Time Tracker Report', 14, yPos);
-    yPos += 10;
+        const { jsPDF } = jspdf;
+        const doc = new jsPDF();
 
-    doc.setFontSize(12);
-    for (const [period, data] of Object.entries(report)) {
-        doc.setFontStyle('bold');
-        doc.text(`Period: ${period}`, 14, yPos);
-        yPos += 7;
-        doc.text(`Total Time: ${formatDuration(data.total)}`, 14, yPos);
+        let yPos = 20;
+        doc.setFontSize(18);
+        doc.text('Time Tracker Report', 14, yPos);
         yPos += 10;
 
-        doc.setFontStyle('normal');
-        data.entries.forEach(entry => {
-            doc.text(`${entry.description || 'No description'} - ${formatDuration(entry.duration)} - ${entry.projectName}`, 14, yPos);
+        doc.setFontSize(12);
+        for (const [period, data] of Object.entries(report)) {
+            doc.setFont(undefined, 'bold');
+            doc.text(`Period: ${period}`, 14, yPos);
             yPos += 7;
+            doc.text(`Total Time: ${formatDuration(data.total)}`, 14, yPos);
+            yPos += 10;
 
-            if (yPos > 280) {
-                doc.addPage();
-                yPos = 20;
-            }
-        });
-        yPos += 10;
+            doc.setFont(undefined, 'normal');
+            data.entries.forEach(entry => {
+                const text = `${entry.description || 'No description'} - ${formatDuration(entry.duration)} - ${entry.projectName}`;
+                const textLines = doc.splitTextToSize(text, 180);
+                textLines.forEach(line => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, 14, yPos);
+                    yPos += 7;
+                });
+                yPos += 3;
+            });
+            yPos += 10;
+        }
+
+        doc.save('time_tracker_report.pdf');
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded.');
     }
+}
 
-    doc.save('time_tracker_report.pdf');
+function debugJsPDF() {
+    if (typeof jspdf !== 'undefined') {
+        console.log('jsPDF is loaded correctly');
+        console.log('jsPDF version:', jspdf.version);
+    } else {
+        console.error('jsPDF is not loaded');
+    }
 }
 
 function exportReportAsMarkdown(report) {
@@ -2298,7 +2319,12 @@ function addExportButtons() {
         button.textContent = `Export as ${format.name}`;
         button.addEventListener('click', () => {
             if (window.currentReport) {
-                format.func(window.currentReport);
+                try {
+                    format.func(window.currentReport);
+                } catch (error) {
+                    console.error(`Error exporting as ${format.name}:`, error);
+                    alert(`An error occurred while exporting as ${format.name}. Please check the console for more information.`);
+                }
             } else {
                 console.error('No report data available for export');
                 alert('Please generate a report before exporting.');
