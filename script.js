@@ -1812,43 +1812,50 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
 /* Project report related functions */
 
 function initializeReportFeature() {
-  const reportType = document.getElementById('reportType');
-  const startDate = document.getElementById('reportStartDate');
-  const endDate = document.getElementById('reportEndDate');
-  const generateButton = document.getElementById('generateReport');
-  const selectAllButton = document.getElementById('selectAllProjects');
-  const deselectAllButton = document.getElementById('deselectAllProjects');
+    const reportType = document.getElementById('reportType');
+    const startDate = document.getElementById('reportStartDate');
+    const endDate = document.getElementById('reportEndDate');
+    const generateButton = document.getElementById('generateReport');
+    const selectAllButton = document.getElementById('selectAllProjects');
+    const deselectAllButton = document.getElementById('deselectAllProjects');
 
-  if (!reportType || !startDate || !endDate || !generateButton || !selectAllButton || !deselectAllButton) {
-    console.error('One or more required elements for report feature not found');
-    return;
-  }
+    if (!reportType || !startDate || !endDate || !generateButton || !selectAllButton || !deselectAllButton) {
+        console.error('One or more required elements for report feature not found');
+        return;
+    }
 
-  // Set default dates
-  const today = new Date();
-  endDate.value = formatDate(today);
-  startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1)); // First day of current month
+    // Set default dates
+    const today = new Date();
+    endDate.value = formatDate(today);
+    startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1)); // First day of current month
 
-  // Populate project selection
-  populateProjectSelection().catch(error => {
-    console.error('Error populating project selection:', error);
-    alert('Failed to load projects. Please refresh the page and try again.');
-  });
-
-  // Add event listeners
-  generateButton.addEventListener('click', generateReport);
-  selectAllButton.addEventListener('click', selectAllProjects);
-  deselectAllButton.addEventListener('click', deselectAllProjects);
-
-  // Add date input validation
-  [startDate, endDate].forEach(input => {
-    input.addEventListener('change', function() {
-      if (!isValidDate(this.value)) {
-        alert('Please enter a valid date.');
-        this.value = '';
-      }
+    // Populate project selection
+    populateProjectSelection().catch(error => {
+        console.error('Error populating project selection:', error);
+        alert('Failed to load projects. Please refresh the page and try again.');
     });
-  });
+
+    // Add column selection
+    addColumnSelection();
+
+    // Add event listeners
+    generateButton.addEventListener('click', () => {
+        const selectedColumns = Array.from(document.querySelectorAll('#columnSelection input:checked'))
+            .map(checkbox => checkbox.id.replace('column-', ''));
+        generateReport(selectedColumns);
+    });
+    selectAllButton.addEventListener('click', selectAllProjects);
+    deselectAllButton.addEventListener('click', deselectAllProjects);
+
+    // Add date input validation
+    [startDate, endDate].forEach(input => {
+        input.addEventListener('change', function() {
+            if (!isValidDate(this.value)) {
+                alert('Please enter a valid date.');
+                this.value = '';
+            }
+        });
+    });
 }
 
 function isValidDate(dateString) {
@@ -2025,70 +2032,73 @@ function startProjectRangeSelection(event) {
     document.addEventListener('mouseup', stopRangeSelect);
 }
 
-function generateReport(selectedColumns = ['period', 'totalTime', 'description', 'timeSpent', 'project']) {
-  const reportType = document.getElementById('reportType').value;
-  const startDate = new Date(document.getElementById('reportStartDate').value);
-  startDate.setHours(0, 0, 0, 0); // Set to start of day
-  const endDate = new Date(document.getElementById('reportEndDate').value);
-  endDate.setHours(23, 59, 59, 999); // Set to end of day
-  const selectedProjects = Array.from(document.querySelectorAll('#projectSelection input:checked')).map(cb => parseInt(cb.value));
+function generateReport(selectedColumns) {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = new Date(document.getElementById('reportStartDate').value);
+    startDate.setHours(0, 0, 0, 0); // Set to start of day
+    const endDate = new Date(document.getElementById('reportEndDate').value);
+    endDate.setHours(23, 59, 59, 999); // Set to end of day
+    const selectedProjects = Array.from(document.querySelectorAll('#projectSelection input:checked')).map(cb => parseInt(cb.value));
 
-  if (selectedProjects.length === 0) {
-    alert('Please select at least one project.');
-    return;
-  }
-
-  if (startDate > endDate) {
-    alert('Start date cannot be after end date.');
-    return;
-  }
-
-  dbReady.then(() => {
-    let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
-    let timeEntryStore = transaction.objectStore('timeEntries');
-    let projectStore = transaction.objectStore('projects');
-
-    Promise.all([
-      new Promise((resolve) => {
-        timeEntryStore.getAll().onsuccess = (event) => resolve(event.target.result);
-      }),
-      new Promise((resolve) => {
-        projectStore.getAll().onsuccess = (event) => resolve(event.target.result);
-      })
-    ]).then(([allTimeEntries, allProjects]) => {
-      const projectMap = new Map(allProjects.map(p => [p.id, p.name]));
-      
-      const filteredEntries = allTimeEntries.filter(entry => 
-        selectedProjects.includes(entry.projectId) &&
-        new Date(entry.start) <= endDate &&
-        new Date(entry.end) >= startDate
-      ).map(entry => ({
-        ...entry,
-        projectName: projectMap.get(entry.projectId)
-      }));
-
-      if (filteredEntries.length === 0) {
-        alert('No time entries found for the selected criteria.');
-        currentReport = null;
+    if (selectedProjects.length === 0) {
+        alert('Please select at least one project.');
         return;
-      }
+    }
 
-      let report;
-      if (reportType === 'weekly') {
-        report = generateWeeklyReport(filteredEntries, startDate, endDate);
-      } else {
-        report = generateMonthlyReport(filteredEntries, startDate, endDate);
-      }
+    if (startDate > endDate) {
+        alert('Start date cannot be after end date.');
+        return;
+    }
 
-      currentReport = report;  // Set the global currentReport variable
-      displayReport(report, selectedColumns);
-    }).catch(error => {
-      console.error('Error generating report:', error);
-      alert('An error occurred while generating the report. Please try again.');
-      currentReport = null;
+    dbReady.then(() => {
+        let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
+        let timeEntryStore = transaction.objectStore('timeEntries');
+        let projectStore = transaction.objectStore('projects');
+
+        Promise.all([
+            new Promise((resolve) => {
+                timeEntryStore.getAll().onsuccess = (event) => resolve(event.target.result);
+            }),
+            new Promise((resolve) => {
+                projectStore.getAll().onsuccess = (event) => resolve(event.target.result);
+            })
+        ]).then(([allTimeEntries, allProjects]) => {
+            const projectMap = new Map(allProjects.map(p => [p.id, p.name]));
+            
+            const filteredEntries = allTimeEntries.filter(entry => 
+                selectedProjects.includes(entry.projectId) &&
+                new Date(entry.start) <= endDate &&
+                new Date(entry.end) >= startDate
+            ).map(entry => ({
+                ...entry,
+                projectName: projectMap.get(entry.projectId)
+            }));
+
+            if (filteredEntries.length === 0) {
+                alert('No time entries found for the selected criteria.');
+                currentReport = null;
+                return;
+            }
+
+            let report;
+            if (reportType === 'weekly') {
+                report = generateWeeklyReport(filteredEntries, startDate, endDate);
+            } else {
+                report = generateMonthlyReport(filteredEntries, startDate, endDate);
+            }
+
+            currentReport = report;  // Set the global currentReport variable
+            displayReport(report, selectedColumns);
+        }).catch(error => {
+            console.error('Error generating report:', error);
+            alert('An error occurred while generating the report. Please try again.');
+            currentReport = null;
+        });
     });
-  });
 }
+
+  // Use selectedColumns when creating the report
+  //displayReport(report, selectedColumns);
 
 function generateWeeklyReport(entries, startDate, endDate) {
     let report = {};
@@ -2180,7 +2190,7 @@ function generateMonthlyReport(entries, startDate, endDate) {
     return report;
 }
 
-function displayReport(report, showProjectColumn) {
+function displayReport(report, selectedColumns, showProjectColumn) {
   const reportResults = document.getElementById('reportResults');
   reportResults.innerHTML = ''; // Clear previous results
 
@@ -2191,8 +2201,16 @@ function displayReport(report, showProjectColumn) {
 
   // Create table header
   const headerRow = table.insertRow();
-  const headers = ['Period', 'Total Time', 'Description', 'Time Spent'];
-  if (showProjectColumn) headers.push('Project');
+  const headers = selectedColumns.map(column => {
+    switch(column) {
+      case 'period': return 'Period';
+      case 'totalTime': return 'Total Time';
+      case 'description': return 'Description';
+      case 'timeSpent': return 'Time Spent';
+      case 'project': return 'Project';
+      default: return '';
+    }
+  });
   headers.forEach(text => {
     const th = document.createElement('th');
     th.textContent = text;
@@ -2218,26 +2236,38 @@ function displayReport(report, showProjectColumn) {
           const entry = data.entries[i];
           const row = table.insertRow();
 
-          if (i === 0) {
-            const periodCell = row.insertCell();
-            periodCell.textContent = period;
-            periodCell.rowSpan = data.entries.length;
-
-            const totalCell = row.insertCell();
-            totalCell.textContent = formatDuration(data.total);
-            totalCell.rowSpan = data.entries.length;
-          }
-
-          const descriptionCell = row.insertCell();
-          descriptionCell.textContent = entry.description || 'No description';
-
-          const timeSpentCell = row.insertCell();
-          timeSpentCell.textContent = formatDuration(entry.duration);
-
-          if (showProjectColumn) {
-            const projectCell = row.insertCell();
-            projectCell.textContent = entry.projectName;
-          }
+          selectedColumns.forEach(column => {
+            switch(column) {
+              case 'period':
+                if (i === 0) {
+                  const cell = row.insertCell();
+                  cell.textContent = period;
+                  cell.rowSpan = data.entries.length;
+                }
+                break;
+              case 'totalTime':
+                if (i === 0) {
+                  const cell = row.insertCell();
+                  cell.textContent = formatDuration(data.total);
+                  cell.rowSpan = data.entries.length;
+                }
+                break;
+              case 'description':
+                const descriptionCell = row.insertCell();
+                descriptionCell.textContent = entry.description || 'No description';
+                break;
+              case 'timeSpent':
+                const timeSpentCell = row.insertCell();
+                timeSpentCell.textContent = formatDuration(entry.duration);
+                break;
+              case 'project':
+                if (showProjectColumn) {
+                  const projectCell = row.insertCell();
+                  projectCell.textContent = entry.projectName;
+                }
+                break;
+            }
+          });
         }
         entryCount++;
       }
@@ -2452,6 +2482,43 @@ function addExportButtons() {
 
 function debugReportData() {
   console.log('Current report data:', window.currentReport);
+}
+
+function addColumnSelection() {
+    const columnSelection = document.createElement('div');
+    columnSelection.id = 'columnSelection';
+    columnSelection.className = 'column-selection';
+
+    const columns = [
+        { id: 'period', name: 'Period', checked: true },
+        { id: 'totalTime', name: 'Total Time', checked: true },
+        { id: 'description', name: 'Description', checked: true },
+        { id: 'timeSpent', name: 'Time Spent', checked: true },
+        { id: 'project', name: 'Project', checked: true }
+    ];
+
+    columns.forEach(column => {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `column-${column.id}`;
+        checkbox.checked = column.checked;
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(column.name));
+        columnSelection.appendChild(label);
+    });
+
+    const reportControls = document.querySelector('.report-controls');
+    reportControls.appendChild(columnSelection);
+}
+
+function updateReportDisplay() {
+    const selectedColumns = Array.from(document.querySelectorAll('#columnSelection input:checked'))
+        .map(checkbox => checkbox.id.replace('column-', ''));
+    
+    // Re-generate the report with selected columns
+    generateReport(selectedColumns);
 }
 
 /* Database operations */
