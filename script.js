@@ -1818,55 +1818,91 @@ function initializeReportFeature() {
   const selectAllButton = document.getElementById('selectAllProjects');
   const deselectAllButton = document.getElementById('deselectAllProjects');
 
+  if (!reportType || !startDate || !endDate || !generateButton || !selectAllButton || !deselectAllButton) {
+    console.error('One or more required elements for report feature not found');
+    return;
+  }
+
   // Set default dates
   const today = new Date();
   endDate.value = formatDate(today);
   startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1)); // First day of current month
 
   // Populate project selection
-  populateProjectSelection();
+  populateProjectSelection().catch(error => {
+    console.error('Error populating project selection:', error);
+    alert('Failed to load projects. Please refresh the page and try again.');
+  });
 
   // Add event listeners
   generateButton.addEventListener('click', generateReport);
   selectAllButton.addEventListener('click', selectAllProjects);
   deselectAllButton.addEventListener('click', deselectAllProjects);
+
+  // Add date input validation
+  [startDate, endDate].forEach(input => {
+    input.addEventListener('change', function() {
+      if (!isValidDate(this.value)) {
+        alert('Please enter a valid date.');
+        this.value = '';
+      }
+    });
+  });
+}
+
+function isValidDate(dateString) {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateString)) return false;
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date);
 }
 
 function populateProjectSelection() {
+  return new Promise((resolve, reject) => {
     const projectSelection = document.getElementById('projectSelection');
+    if (!projectSelection) {
+      reject(new Error('Project selection element not found'));
+      return;
+    }
+
     projectSelection.innerHTML = ''; // Clear existing checkboxes
 
     dbReady.then(() => {
-        let transaction = db.transaction(['projects'], 'readonly');
-        let store = transaction.objectStore('projects');
-        let request = store.getAll();
+      let transaction = db.transaction(['projects'], 'readonly');
+      let store = transaction.objectStore('projects');
+      let request = store.getAll();
 
-        request.onsuccess = function(event) {
-            const projects = event.target.result;
-            // Sort projects based on their order property
-            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+      request.onsuccess = function(event) {
+        const projects = event.target.result;
+        projects.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-            projects.forEach((project) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'project-checkbox-wrapper';
+        projects.forEach((project) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'project-checkbox-wrapper';
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `project-${project.id}`;
-                checkbox.value = project.id;
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `project-${project.id}`;
+          checkbox.value = project.id;
 
-                const label = document.createElement('label');
-                label.htmlFor = `project-${project.id}`;
-                label.textContent = project.name;
+          const label = document.createElement('label');
+          label.htmlFor = `project-${project.id}`;
+          label.textContent = project.name;
 
-                wrapper.appendChild(checkbox);
-                wrapper.appendChild(label);
-                projectSelection.appendChild(wrapper);
-            });
+          wrapper.appendChild(checkbox);
+          wrapper.appendChild(label);
+          projectSelection.appendChild(wrapper);
+        });
 
-            initializeProjectSelection();
-        };
-    });
+        initializeProjectSelection();
+        resolve();
+      };
+
+      request.onerror = function(event) {
+        reject(new Error('Error loading projects from database'));
+      };
+    }).catch(reject);
+  });
 }
 
 function initializeProjectSelection() {
@@ -2053,16 +2089,12 @@ function generateReport() {
 function generateWeeklyReport(entries, startDate, endDate) {
     let report = {};
     let currentDate = new Date(startDate);
-    endDate = new Date(endDate);
-
-    // Ensure endDate is set to the end of the day
-    endDate.setHours(23, 59, 59, 999);
 
     while (currentDate <= endDate) {
         let weekStart = new Date(currentDate);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Set to Sunday
-        let weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6, 23, 59, 59, 999); // Set to Saturday end of day
+        let weekEnd = new Date(currentDate);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
 
         // Adjust weekEnd if it's beyond the overall endDate
         if (weekEnd > endDate) {
@@ -2072,21 +2104,12 @@ function generateWeeklyReport(entries, startDate, endDate) {
         let weekEntries = entries.filter(entry => {
             let entryStart = new Date(entry.start);
             let entryEnd = new Date(entry.end);
-            return (
-                (entryStart >= weekStart && entryStart <= weekEnd) ||
-                (entryEnd >= weekStart && entryEnd <= weekEnd) ||
-                (entryStart <= weekStart && entryEnd >= weekEnd)
-            );
+            return (entryStart <= weekEnd && entryEnd >= weekStart);
         });
 
         let weekTotal = weekEntries.reduce((total, entry) => {
-            let entryStart = new Date(entry.start);
-            let entryEnd = new Date(entry.end);
-            
-            // Adjust entry start and end times if they fall outside the week
-            if (entryStart < weekStart) entryStart = weekStart;
-            if (entryEnd > weekEnd) entryEnd = weekEnd;
-            
+            let entryStart = new Date(Math.max(entry.start, weekStart.getTime()));
+            let entryEnd = new Date(Math.min(entry.end, weekEnd.getTime()));
             return total + (entryEnd - entryStart);
         }, 0);
 
@@ -2094,7 +2117,11 @@ function generateWeeklyReport(entries, startDate, endDate) {
 
         report[weekKey] = {
             total: weekTotal,
-            entries: weekEntries
+            entries: weekEntries.map(entry => ({
+                ...entry,
+                adjustedStart: new Date(Math.max(entry.start, weekStart.getTime())),
+                adjustedEnd: new Date(Math.min(entry.end, weekEnd.getTime()))
+            }))
         };
 
         currentDate.setDate(currentDate.getDate() + 7); // Move to next week
@@ -2106,10 +2133,6 @@ function generateWeeklyReport(entries, startDate, endDate) {
 function generateMonthlyReport(entries, startDate, endDate) {
     let report = {};
     let currentDate = new Date(startDate);
-    endDate = new Date(endDate);
-
-    // Ensure endDate is set to the end of the day
-    endDate.setHours(23, 59, 59, 999);
 
     while (currentDate <= endDate) {
         let monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -2123,21 +2146,12 @@ function generateMonthlyReport(entries, startDate, endDate) {
         let monthEntries = entries.filter(entry => {
             let entryStart = new Date(entry.start);
             let entryEnd = new Date(entry.end);
-            return (
-                (entryStart >= monthStart && entryStart <= monthEnd) ||
-                (entryEnd >= monthStart && entryEnd <= monthEnd) ||
-                (entryStart <= monthStart && entryEnd >= monthEnd)
-            );
+            return (entryStart <= monthEnd && entryEnd >= monthStart);
         });
 
         let monthTotal = monthEntries.reduce((total, entry) => {
-            let entryStart = new Date(entry.start);
-            let entryEnd = new Date(entry.end);
-            
-            // Adjust entry start and end times if they fall outside the month
-            if (entryStart < monthStart) entryStart = monthStart;
-            if (entryEnd > monthEnd) entryEnd = monthEnd;
-            
+            let entryStart = new Date(Math.max(entry.start, monthStart.getTime()));
+            let entryEnd = new Date(Math.min(entry.end, monthEnd.getTime()));
             return total + (entryEnd - entryStart);
         }, 0);
 
@@ -2145,7 +2159,11 @@ function generateMonthlyReport(entries, startDate, endDate) {
 
         report[monthKey] = {
             total: monthTotal,
-            entries: monthEntries
+            entries: monthEntries.map(entry => ({
+                ...entry,
+                adjustedStart: new Date(Math.max(entry.start, monthStart.getTime())),
+                adjustedEnd: new Date(Math.min(entry.end, monthEnd.getTime()))
+            }))
         };
 
         currentDate.setMonth(currentDate.getMonth() + 1); // Move to next month
