@@ -2359,9 +2359,10 @@ function exportReportAsPDF(report) {
         }
 
         doc.save('time_tracker_report.pdf');
+        console.log('PDF export successful');
     } catch (error) {
         console.error('Error generating PDF:', error);
-        alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded.');
+        alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded and try again.');
     }
 }
 
