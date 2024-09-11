@@ -1855,6 +1855,9 @@ function populateProjectSelection() {
 
         request.onsuccess = function(event) {
             const projects = event.target.result;
+            // Sort projects based on their order property
+            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+
             projects.forEach((project) => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'project-checkbox-wrapper';
@@ -2141,7 +2144,7 @@ function displayReport(report, showProjectColumn) {
 
   // Create table header
   const headerRow = table.insertRow();
-  const headers = ['Period', 'Total Time', 'Details'];
+  const headers = ['Period', 'Total Time', 'Description', 'Time Spent'];
   if (showProjectColumn) headers.push('Project');
   headers.forEach(text => {
     const th = document.createElement('th');
@@ -2151,33 +2154,32 @@ function displayReport(report, showProjectColumn) {
 
   // Create table body
   for (const [period, data] of Object.entries(report)) {
-    const row = table.insertRow();
+    // Add a row for the period summary
+    const summaryRow = table.insertRow();
     
-    const periodCell = row.insertCell();
+    const periodCell = summaryRow.insertCell();
     periodCell.textContent = period;
+    periodCell.rowSpan = data.entries.length + 1; // +1 for the summary row itself
 
-    const totalCell = row.insertCell();
+    const totalCell = summaryRow.insertCell();
     totalCell.textContent = formatDuration(data.total);
+    totalCell.rowSpan = data.entries.length + 1;
 
-    const detailsCell = row.insertCell();
-    const detailsList = document.createElement('ul');
-    data.entries.forEach(entry => {
-      const listItem = document.createElement('li');
-      listItem.textContent = `${entry.description || 'No description'}: ${formatDuration(entry.duration)}`;
-      detailsList.appendChild(listItem);
+    // Add rows for each entry
+    data.entries.forEach((entry, index) => {
+      const row = index === 0 ? summaryRow : table.insertRow();
+
+      const descriptionCell = row.insertCell();
+      descriptionCell.textContent = entry.description || 'No description';
+
+      const timeSpentCell = row.insertCell();
+      timeSpentCell.textContent = formatDuration(entry.duration);
+
+      if (showProjectColumn) {
+        const projectCell = row.insertCell();
+        projectCell.textContent = entry.projectName;
+      }
     });
-    detailsCell.appendChild(detailsList);
-
-    if (showProjectColumn) {
-      const projectCell = row.insertCell();
-      const projectList = document.createElement('ul');
-      data.entries.forEach(entry => {
-        const listItem = document.createElement('li');
-        listItem.textContent = entry.projectName;
-        projectList.appendChild(listItem);
-      });
-      projectCell.appendChild(projectList);
-    }
   }
 
   reportResults.appendChild(table);
