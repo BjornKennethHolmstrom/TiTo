@@ -2470,15 +2470,64 @@ function exportReportAsMarkdown() {
         return;
     }
 
+    const TOTAL_WIDTH = 90; // Total width of the Markdown document
+    const TIME_SPENT_WIDTH = 12; // Fixed width for time spent column
+    const MIN_PROJECT_WIDTH = 10; // Minimum width for project column
+    const MIN_DESC_WIDTH = 20; // Minimum width for description column
+
     let mdContent = "# Time Tracker Report\n\n";
+
+    function wrapText(text, maxWidth) {
+        const words = text.split(' ');
+        let lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+            if ((currentLine + word).length <= maxWidth) {
+                currentLine += (currentLine ? ' ' : '') + word;
+            } else {
+                if (currentLine) lines.push(currentLine);
+                currentLine = word;
+            }
+        });
+        if (currentLine) lines.push(currentLine);
+
+        return lines;
+    }
+
+    function padString(str, length) {
+        return str.padEnd(length);
+    }
 
     for (const [period, data] of Object.entries(currentReport)) {
         mdContent += `## ${period}\n\n`;
         mdContent += `**Total Time:** ${formatDuration(data.total)}\n\n`;
-        mdContent += "| Description | Time Spent | Project |\n";
-        mdContent += "|-------------|------------|--------|\n";
+
+        // Calculate column widths
+        const longestProjectName = Math.max(...data.entries.map(e => e.projectName.length));
+        const maxProjectWidth = Math.max(longestProjectName, MIN_PROJECT_WIDTH);
+        const descWidth = TOTAL_WIDTH - TIME_SPENT_WIDTH - maxProjectWidth - 7; // 7 for '| ' and ' | ' and an extra space
+
+        // Create table header
+        mdContent += `| ${'Description'.padEnd(descWidth)} | ${'Time Spent'.padEnd(TIME_SPENT_WIDTH)} | ${'Project'.padEnd(maxProjectWidth)} |\n`;
+        mdContent += `| ${'-'.repeat(descWidth)} | ${'-'.repeat(TIME_SPENT_WIDTH)} | ${'-'.repeat(maxProjectWidth)} |\n`;
+
+        // Add table rows
         data.entries.forEach(entry => {
-            mdContent += `| ${entry.description || 'No description'} | ${formatDuration(entry.duration)} | ${entry.projectName} |\n`;
+            const wrappedDesc = wrapText(entry.description || 'No description', descWidth);
+            const wrappedProject = wrapText(entry.projectName, maxProjectWidth);
+            const maxLines = Math.max(wrappedDesc.length, wrappedProject.length);
+
+            for (let i = 0; i < maxLines; i++) {
+                let descLine = i < wrappedDesc.length ? wrappedDesc[i] : '';
+                const projectLine = i < wrappedProject.length ? padString(wrappedProject[i], maxProjectWidth) : ' '.repeat(maxProjectWidth);
+                const timeSpent = i === 0 ? padString(formatDuration(entry.duration), TIME_SPENT_WIDTH) : ' '.repeat(TIME_SPENT_WIDTH);
+
+                // Ensure description line is exactly descWidth characters
+                descLine = padString(descLine.slice(0, descWidth), descWidth);
+
+                mdContent += `| ${descLine} | ${timeSpent} | ${projectLine} |\n`;
+            }
         });
         mdContent += "\n";
     }

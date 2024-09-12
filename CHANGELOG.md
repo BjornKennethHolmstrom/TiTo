@@ -1,13 +1,36 @@
 # CHANGELOG
 
-## Unreleased
+## TiTo 1.06.1
+
+- Added link for user feedback. Renamed link for support by donation and TiTo web page
+
+## TiTo 1.06
 
 ### Features added and issues resolved
 
 1. Project Report Feature:
-   - Weekly and monthly reports
-   - Drag select of projects to include
-   - Export to CSV, PDF and Markdown
+   - Implemented weekly and monthly report generation
+   - Added drag select functionality for easy project selection in reports
+   - Introduced export options for reports: CSV, PDF, and Markdown
+   - Enhanced Markdown export with optimized formatting and full project name preservation
+   - Improved PDF export with a clean, table-like structure and proper page breaks
+
+2. User Interface Improvements:
+   - Added a new "Reports" tab in the chart and visualization section
+   - Implemented date range selection for report generation
+   - Created an intuitive interface for selecting projects to include in reports
+
+3. Data Visualization Enhancements:
+   - Refined chart displays for better readability and information density
+   - Improved color scheme for better visual distinction between projects
+
+4. Performance Optimizations:
+   - Enhanced data processing for faster report generation
+   - Optimized Markdown and PDF export functions for improved performance with large datasets
+
+5. Documentation:
+   - Updated README.md with new report feature instructions
+   - Updated CHANGELOG.md to reflect recent changes and improvements
 
 ## TiTo 1.05
 

@@ -1,4 +1,4 @@
-# 🕚 TiTo Time Tracker - v 1.04
+# 🕚 TiTo Time Tracker - v 1.04.1
 
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
@@ -90,6 +90,19 @@ Reordering Projects:
 Deleting Projects or Time Entries:
 - Click the trash can icon (🗑️) next to a project or time entry to delete it.
 
+Generating Reports:
+- Navigate to the "Reports" tab in the chart and visualization section.
+- Select either "Weekly Summary" or "Monthly Summary".
+- Choose the date range for your report.
+- Use the drag select feature to quickly select multiple projects for the report.
+- Click "Generate Report" to create your report.
+- Use the export buttons to download the report in CSV, PDF, or Markdown format.
+
+Exporting Reports:
+- After generating a report, click on the desired export format (CSV, PDF, or Markdown).
+- For Markdown exports, the report is optimized for readability with preserved project names and aligned columns.
+- PDF exports feature a clean, table-like structure with proper page breaks for longer reports.
+
 Exporting Data:
 - Click the "Export Database" button to save all your project and time entry data as a JSON file.
 - This file can be used for backup purposes or to transfer data to another device.
@@ -113,9 +126,13 @@ Accessing App Information:
 
 ## Future Plans
 
-- Enhanced data visualization and reporting features
-- Dark mode
+- Support for screen readers
 - Multi-lingual support
+- Customizable report templates
+- Improved aesthetics
+- Dark mode
+- Time goals
+- Enhanced data visualization
 
 ## License
 
