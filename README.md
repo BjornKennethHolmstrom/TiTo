@@ -140,7 +140,7 @@ See the included file named LICENSE
 
 ## Contributing
 
-We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact us through our website at 
+We welcome contributions to TiTo Time Tracker! If you have suggestions for improvements or encounter any issues, please contact me through my website at 
 https://bjornkennethholmstrom.wordpress.com/contact/
 
 You can also support the development by donating at 
@@ -150,5 +150,4 @@ Any amount is greatly appreciated!
 ## Acknowledgments
 
 - Claude, an AI assistant created by Anthropic, for assistance in development and documentation
-
-Thank you for using TiTo Time Tracker! We hope it helps you manage your time more effectively.
+- My family for support and infrastructure
