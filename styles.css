@@ -876,6 +876,16 @@ li button {
         width: 100%;
         margin-bottom: 10px;
     }
+    .time-entries-section {
+        flex-grow: 1; /* Allow it to grow to fill the available space */
+        max-height: none; /* Remove restrictive max-height */
+        min-height: 85vh; /* Ensure a minimum visible height */
+    }
+    #timeEntryList {
+        display: block; /* Ensure the list is displayed */
+        max-height: none; /* Allow it to expand fully */
+        overflow-y: auto; /* Enable scrolling for long lists */
+    }
 }
 
 @media (min-width: 1920px) {
@@ -892,7 +902,7 @@ li button {
     }
 }
 
-@media (max-width: 1919px) {
+@media (max-width: 1919px) and (min-width: 1200px) {
     .column:first-child {
         flex: 0 0 250px;
     }
@@ -902,33 +912,27 @@ li button {
     }
 }
 
-@media (min-width: 1200px) {
-    .column:first-child {
-        flex: 0 0 250px;
-    }
-
-    .column:nth-child(2) {
-        flex: 0 0 calc(25% - 20px);
-    }
-
-    .column:nth-child(3) {
-        flex: 1;
-    }
-}
-
 @media (max-width: 1199px) {
     .container {
         flex-direction: column;
     }
     .column {
-        width: 100%;
+        flex: 1 1 auto; /* Flex to fit content */
+        max-height: none;
+        height: auto;
     }
     .column:first-child {
         flex: 0 0 auto;
     }
-}
-
-@media (max-width: 1200px) {
+    .column:nth-child(3) {
+        height: auto;
+    }
+    .time-entries-section {
+        max-height: 70vh; /* Adjust this value as needed */
+    }
+    #timeEntryList {
+        max-height: 60vh;
+    }
     .header {
         flex-direction: column;
         align-items: flex-start;
@@ -995,5 +999,21 @@ li button {
 #importDatabaseButton,
 #clearDatabaseButton {
     margin-top: 10px;
+}
+
+/* For keyboard navigation */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #007bff;
+    color: white;
+    padding: 8px;
+    z-index: 100;
+    transition: top 0.3s;
+}
+
+.skip-link:focus {
+    top: 0;
 }
 

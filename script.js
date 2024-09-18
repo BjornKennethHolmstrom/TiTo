@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDB();
     initializeUI();
     startTimerDisplayUpdate();
+    initializeKeyboardNavigation();
 
     dbReady
         .then(() => loadProjects())
@@ -363,6 +364,7 @@ function loadProjects() {
 
 function renderProjectList(projects) {
     log(LogLevel.INFO, 'Rendering projects:', projects);
+
     const projectListElement = document.getElementById('projectList');
     if (!projectListElement) {
         log(LogLevel.ERROR, 'Project list element not found');
@@ -370,9 +372,11 @@ function renderProjectList(projects) {
         return;
     }
     projectListElement.innerHTML = '';
+    projectListElement.tabIndex = '0';
 
     projects.forEach((project, index) => {
         const listItem = document.createElement('li');
+        listItem.id = `project-${project.id}`;
         listItem.dataset.projectId = project.id;
         listItem.draggable = true;
 
@@ -380,6 +384,7 @@ function renderProjectList(projects) {
         projectName.textContent = project.name;
         projectName.className = 'project-name';
         projectName.contentEditable = true;
+        projectName.setAttribute('aria-label', `Edit project name: ${project.name}`);
 
         projectName.addEventListener('dblclick', function(event) {
             event.stopPropagation();
@@ -399,6 +404,7 @@ function renderProjectList(projects) {
         const deleteButton = document.createElement('button');
         deleteButton.textContent = '🗑️';
         deleteButton.className = 'remove-project-button';
+        deleteButton.setAttribute('aria-label', `Delete project ${project.name}`);
         deleteButton.title = 'Delete project';
         deleteButton.addEventListener('click', function(event) {
             event.stopPropagation();
@@ -407,6 +413,13 @@ function renderProjectList(projects) {
 
         listItem.appendChild(projectName);
         listItem.appendChild(deleteButton);
+
+        listItem.setAttribute('tabindex', '0'); // Make the list item focusable
+        listItem.addEventListener('keydown', (event) => handleProjectKeyDown(event, projects.length, index));
+        projectName.addEventListener('keydown', handleProjectNameKeyDown);
+        deleteButton.addEventListener('keydown', handleDeleteButtonKeyDown);
+
+        listItem.setAttribute('aria-label', `Project: ${project.name}`);
 
         listItem.addEventListener('click', function(event) {
             if (event.target !== projectName && event.target !== deleteButton) {
@@ -428,8 +441,68 @@ function renderProjectList(projects) {
         const currentProjectItem = projectListElement.querySelector(`[data-project-id="${currentProject.id}"]`);
         if (currentProjectItem) {
             currentProjectItem.classList.add('selected');
+            currentProjectItem.setAttribute('aria-current', 'true');
         }
     }
+
+    projectListElement.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && !event.shiftKey) {
+            // If Tab is pressed on the last project, move focus out of the list
+            const lastProject = projectListElement.lastElementChild;
+            if (document.activeElement === lastProject) {
+                event.preventDefault();
+                const timeEntrySection = document.querySelector('.time-entries-section');
+                const firstFocusableElement = timeEntrySection.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (firstFocusableElement) {
+                    firstFocusableElement.focus();
+                }
+            }
+        }
+    });
+}
+
+function handleProjectKeyDown(event, totalProjects, currentIndex) {
+    const listItem = event.target;
+
+    switch (event.key) {
+        case 'ArrowUp':
+            event.preventDefault();
+            if (currentIndex > 0) {
+                listItem.parentElement.children[currentIndex - 1].focus();
+            }
+            break;
+        case 'ArrowDown':
+            event.preventDefault();
+            if (currentIndex < totalProjects - 1) {
+                listItem.parentElement.children[currentIndex + 1].focus();
+            }
+            break;
+        case 'Enter':
+        case ' ':
+            event.preventDefault();
+            setCurrentProject(getProjectFromListItem(listItem));
+            break;
+    }
+}
+
+function handleProjectNameKeyDown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur(); // Trigger the blur event to save changes
+    }
+}
+
+function handleDeleteButtonKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const projectId = event.target.closest('li').dataset.projectId;
+        deleteProject(projectId);
+    }
+}
+
+function getProjectFromListItem(listItem) {
+    const projectId = parseInt(listItem.dataset.projectId);
+    return { id: projectId, name: listItem.querySelector('.project-name').textContent };
 }
 
 function updateProjectName(projectId, newName) {
@@ -810,8 +883,6 @@ function goToLastPage() {
 }
 
 function renderTimeEntryList(timeEntries) {
-//     timeEntries.sort((a, b) => a.order - b.order);
-
     const timeEntryListElement = document.getElementById('timeEntryList');
     timeEntryListElement.innerHTML = '';
 
@@ -819,23 +890,28 @@ function renderTimeEntryList(timeEntries) {
         const listItem = document.createElement('li');
         listItem.draggable = true;
         listItem.dataset.entryId = entry.id;
-        
+        listItem.id = `time-entry-${entry.id}`;
+        listItem.setAttribute('aria-label', `Time entry for ${entry.projectName}`);
+        listItem.setAttribute('tabindex', '0'); // Make the list item focusable
+        listItem.addEventListener('keydown', handleTimeEntryKeyDown);        
+
         // Create inputs for start date and time
         const startDate = new Date(entry.start);
-        const startDateInput = createDateInput(startDate, 'start-date');
+        const startDateInput = createDateInput(startDate, 'start-date', entry.projectName);
         const startDateDisplay = createDateDisplay(startDate, 'start-date-display');
-        const startTimeInput = createTimeInput(startDate, 'start-time');
+        const startTimeInput = createTimeInput(startDate, 'start-time', entry.projectName);
         
         // Create inputs for end date and time
         const endDate = new Date(entry.end);
-        const endDateInput = createDateInput(endDate, 'end-date');
+        const endDateInput = createDateInput(endDate, 'end-date', entry.projectName);
         const endDateDisplay = createDateDisplay(endDate, 'end-date-display');
-        const endTimeInput = createTimeInput(endDate, 'end-time');
+        const endTimeInput = createTimeInput(endDate, 'end-time', entry.projectName);
         
         // Create span for total time
         const totalTimeSpan = document.createElement('span');
         totalTimeSpan.className = 'total-time';
         totalTimeSpan.textContent = formatDuration(entry.duration);
+        totalTimeSpan.setAttribute('aria-label', `Total time: ${formatDuration(entry.duration)}`);
 
         const descriptionInputContainer = document.createElement('div');
         descriptionInputContainer.className = 'description-input-container';
@@ -846,15 +922,22 @@ function renderTimeEntryList(timeEntries) {
         descriptionInput.className = 'description-input';
         descriptionInput.value = entry.description || '';
         descriptionInput.placeholder = 'Enter task description';
+        descriptionInput.setAttribute('aria-label', `Task description for ${entry.projectName}`);
 
         // Create the remove button with trash can emoji
         const removeButton = document.createElement('button');
         removeButton.textContent = '🗑️';
         removeButton.className = 'remove-time-entry-button';
         removeButton.title = 'Delete entry';
-        removeButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            removeTimeEntry(entry.id);
+        removeButton.setAttribute('aria-label', `Delete time entry for ${entry.projectName}`);
+        removeButton.addEventListener('keydown', handleRemoveButtonKeyDown);
+
+        removeButton.addEventListener('click', () => removeTimeEntry(entry.id));
+        removeButton.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                removeTimeEntry(entry.id);
+            }
         });
 
         descriptionInputContainer.appendChild(descriptionInput);
@@ -911,6 +994,60 @@ function renderTimeEntryList(timeEntries) {
         });
         descriptionInput.addEventListener('input', () => updateTimeEntryDescription(entry.id, descriptionInput.value));
     });
+
+    // Adjust the list height based on the number of entries and entries per page
+    const listItemHeight = 60; // Approximate height of each list item in pixels
+    const maxHeight = Math.min(timeEntries.length, entriesPerPage) * listItemHeight;
+    timeEntryListElement.style.height = `${maxHeight}px`;
+}
+
+function updateEntriesPerPage() {
+    const selectedValue = document.getElementById('entriesPerPageSelect').value;
+    const customEntriesPerPage = document.getElementById('customEntriesPerPage');
+
+    if (selectedValue === 'custom') {
+        customEntriesPerPage.style.display = 'inline-block';
+        entriesPerPage = parseInt(customEntriesPerPage.value, 10) || 20;
+    } else if (selectedValue === 'all') {
+        isAllEntries = true;
+        entriesPerPage = Infinity;
+    } else {
+        isAllEntries = false;
+        entriesPerPage = parseInt(selectedValue, 10);
+    }
+
+    currentPage = 1;
+    loadTimeEntries();
+}
+
+function handleTimeEntryKeyDown(event) {
+    const listItem = event.target;
+    const timeEntryList = listItem.parentElement;
+    const entries = Array.from(timeEntryList.children);
+    const currentIndex = entries.indexOf(listItem);
+
+    switch (event.key) {
+        case 'ArrowUp':
+            event.preventDefault();
+            if (currentIndex > 0) {
+                entries[currentIndex - 1].focus();
+            }
+            break;
+        case 'ArrowDown':
+            event.preventDefault();
+            if (currentIndex < entries.length - 1) {
+                entries[currentIndex + 1].focus();
+            }
+            break;
+    }
+}
+
+function handleRemoveButtonKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const entryId = event.target.closest('li').dataset.entryId;
+        removeTimeEntry(entryId);
+    }
 }
 
 function handleTimeEntryDragStart(e) {
@@ -1053,11 +1190,12 @@ function updateTimeEntryOrder() {
     });
 }
 
-function createDateInput(date, name) {
+function createDateInput(date, name, projectName) {
     const input = document.createElement('input');
     input.type = 'date';
     input.name = name;
     input.value = formatDate(date);
+    input.setAttribute('aria-label', `${name === 'start-date' ? 'Start' : 'End'} date for ${projectName}`);
     input.addEventListener('change', function() {
         const display = this.nextElementSibling;
         display.textContent = formatDate(new Date(this.value));
@@ -1069,18 +1207,20 @@ function createDateDisplay(date, name) {
     const span = document.createElement('span');
     span.className = 'date-display';
     span.textContent = formatDate(date);
+    span.setAttribute('aria-hidden', 'true'); // Hide from screen readers as the input is already labeled
     return span;
 }
 
 
-function createTimeInput(date, name) {
+function createTimeInput(date, name, projectName) {
     const input = document.createElement('input');
-    input.type = 'text'; // Change to text input
+    input.type = 'text';
     input.name = name;
     input.value = formatTime(date);
     input.placeholder = 'HH:MM';
     input.pattern = '([01]?[0-9]|2[0-3]):[0-5][0-9]';
     input.title = 'Enter time in 24-hour format (HH:MM)';
+    input.setAttribute('aria-label', `${name === 'start-time' ? 'Start' : 'End'} time for ${projectName}`);
     
     input.addEventListener('blur', function() {
         if (this.value && !isValidTime(this.value)) {
@@ -1206,30 +1346,32 @@ function saveTimeEntry(startTime, endTime) {
 
 
 function removeTimeEntry(id) {
-    dbReady.then(() => {
-        let transaction = db.transaction(['timeEntries'], 'readwrite');
-        let store = transaction.objectStore('timeEntries');
-        let request = store.delete(id);
+    if (confirm('Are you sure you want to delete this time entry?')) {
+        dbReady.then(() => {
+            let transaction = db.transaction(['timeEntries'], 'readwrite');
+            let store = transaction.objectStore('timeEntries');
+            let request = store.delete(id);
 
-        request.onsuccess = function() {
-            console.log('Time entry removed');
-            loadTimeEntries().then(() => {
-                if (document.getElementById('timeEntryList').children.length === 0 && currentPage > 1) {
-                    currentPage--;
-                    loadTimeEntries();
-                }
-            });
-            visualizeProjectData();
-        };
+            request.onsuccess = function() {
+                console.log('Time entry removed');
+                loadTimeEntries().then(() => {
+                    if (document.getElementById('timeEntryList').children.length === 0 && currentPage > 1) {
+                        currentPage--;
+                        loadTimeEntries();
+                    }
+                });
+                visualizeProjectData();
+            };
 
-        request.onerror = function(event) {
-            log(LogLevel.ERROR, 'Error removing time entry:', event);
-            showError('Error removing time entry from database');
-        };
-    }).catch(error => {
-        log(LogLevel.ERROR, 'Database error:', error);
-        showError('Failed to open database when removing time entry');
-    });
+            request.onerror = function(event) {
+                log(LogLevel.ERROR, 'Error removing time entry:', event);
+                showError('Error removing time entry from database');
+            };
+        }).catch(error => {
+            log(LogLevel.ERROR, 'Database error:', error);
+            showError('Failed to open database when removing time entry');
+        });
+    }
 }
 
 function addManualEntry() {
@@ -1538,6 +1680,50 @@ function handleDragEnd(e) {
     this.style.opacity = '1';
     document.querySelectorAll('#projectList li').forEach(function (item) {
         item.classList.remove('over');
+    });
+}
+
+/* Chart and report tabs */
+function initializeTabs() {
+    const tabs = document.querySelectorAll('.tab');
+    const tabSections = document.querySelectorAll('.tab-section');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetId = tab.getAttribute('data-tab');
+            if (!targetId) {
+                console.error('data-tab attribute is missing on tab element');
+                return;
+            }
+            const targetSection = document.getElementById(`${targetId}Section`);
+            
+            if (targetSection) {
+                // Remove active class from all tabs and sections
+                tabs.forEach(t => {
+                    t.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                tabSections.forEach(s => {
+                    s.classList.remove('active');
+                    s.hidden = true;
+                });
+
+                // Add active class to clicked tab and corresponding section
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                targetSection.classList.add('active');
+                targetSection.hidden = false;
+
+                // Trigger chart update if necessary
+                if (targetId === 'timeRange') {
+                    visualizeProjectData();
+                } else if (targetId === 'reports') {
+                    // If you need to do any initialization for the reports tab, do it here
+                }
+            } else {
+                console.error(`Target section not found for tab: ${targetId}`);
+            }
+        });
     });
 }
 
@@ -2620,6 +2806,187 @@ function updateReportDisplay() {
     generateReport(selectedColumns);
 }
 
+// Keyboard navigation
+
+function initializeKeyboardNavigation() {
+    addSkipLinks();
+    initializeTabNavigation();
+    initializeTimerKeyboardControl();
+    initializeDateRangeKeyboardControl();
+    initializeReportGenerationKeyboardControl();
+    initializeModalKeyboardControl();
+}
+
+function addSkipLinks() {
+    const skipLinksContainer = document.createElement('div');
+    skipLinksContainer.className = 'skip-links';
+
+    const links = [
+        { text: 'Skip to project section', target: '.column:nth-child(2)' },
+        { text: 'Skip to time entry section', target: '.time-entries-section' },
+        { text: 'Skip to chart & report tabs', target: '.chart-and-report-container' }
+    ];
+
+    links.forEach(link => {
+        const skipLink = document.createElement('a');
+        skipLink.textContent = link.text;
+        skipLink.href = '#';
+        skipLink.className = 'skip-link';
+        
+        skipLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            const target = document.querySelector(link.target);
+            if (target) {
+                target.tabIndex = -1;
+                target.focus();
+                // Remove tabIndex after focus to prevent an additional tab stop
+                setTimeout(() => target.removeAttribute('tabIndex'), 100);
+            }
+        });
+
+        skipLinksContainer.appendChild(skipLink);
+    });
+
+    document.body.insertBefore(skipLinksContainer, document.body.firstChild);
+}
+
+function initializeTabNavigation() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('keydown', handleTabKeyDown);
+    });
+}
+
+function initializeTimerKeyboardControl() {
+    const playPauseButton = document.getElementById('playPauseButton');
+    const stopButton = document.getElementById('stopButton');
+    playPauseButton.addEventListener('keydown', handleTimerButtonKeyDown);
+    stopButton.addEventListener('keydown', handleTimerButtonKeyDown);
+}
+
+function initializeDateRangeKeyboardControl() {
+    const quickDateRange = document.getElementById('quickDateRange');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    const applyDateRange = document.getElementById('applyDateRange');
+
+    quickDateRange.addEventListener('keydown', handleSelectKeyDown);
+    startDate.addEventListener('keydown', handleDateInputKeyDown);
+    endDate.addEventListener('keydown', handleDateInputKeyDown);
+    applyDateRange.addEventListener('keydown', handleButtonKeyDown);
+}
+
+function initializeReportGenerationKeyboardControl() {
+    const generateReport = document.getElementById('generateReport');
+    generateReport.addEventListener('keydown', handleButtonKeyDown);
+}
+
+function initializeModalKeyboardControl() {
+    const modal = document.getElementById('infoModal');
+    const closeButton = modal.querySelector('.close');
+
+    closeButton.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            closeModal();
+        }
+    });
+
+    modal.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+}
+
+function handleTabKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const tabId = event.target.id;
+        activateTab(tabId);
+    }
+}
+
+function activateTab(tabId) {
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-section');
+
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-selected', 'false');
+    });
+
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+        content.hidden = true;
+    });
+
+    const selectedTab = document.getElementById(tabId);
+    const selectedContent = document.getElementById(tabId.replace('Tab', 'Section'));
+
+    selectedTab.classList.add('active');
+    selectedTab.setAttribute('aria-selected', 'true');
+    selectedContent.classList.add('active');
+    selectedContent.hidden = false;
+
+    // Set focus to the activated tab content
+    selectedContent.focus();
+}
+
+function handleTimerButtonKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        event.target.click();
+    }
+}
+
+function handleSelectKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        event.target.click();
+    }
+}
+
+function handleDateInputKeyDown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur();
+    }
+}
+
+function handleButtonKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        event.target.click();
+    }
+}
+
+function openModal() {
+    const modal = document.getElementById('infoModal');
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    
+    // Set focus to the first focusable element in the modal
+    const firstFocusableElement = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusableElement) {
+        firstFocusableElement.focus();
+    }
+    
+    // Store the element that had focus before opening the modal
+    modal.previouslyFocusedElement = document.activeElement;
+}
+
+function closeModal() {
+    const modal = document.getElementById('infoModal');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    
+    // Return focus to the element that had focus before opening the modal
+    if (modal.previouslyFocusedElement) {
+        modal.previouslyFocusedElement.focus();
+    }
+}
+
 /* Database operations */
 function importDatabase(event) {
     const file = event.target.files[0];
@@ -2653,7 +3020,8 @@ function importDatabase(event) {
                     loadProjects();
                     loadTimeEntries();
                     visualizeProjectData();
-                    showError('Database imported successfully'); // Use showError for success message too
+                    populateProjectSelection();
+                    showError('Database imported successfully');
                 };
             });
         } catch (error) {
@@ -2773,3 +3141,4 @@ function calculateProjectTotals(timeEntries) {
     return projectTotals;
 }
 
+document.addEventListener('DOMContentLoaded', initializeTabs);

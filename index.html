@@ -3,70 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🕚 TiTo</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>TiTo - Time Tracker Tool</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Left Column: Title, Timer, and Database Management -->
-        <div class="column">
+    <div class="container" role="main">
+        <div class="column" role="region" aria-label="Project Management">
             <div class="title-container">
-              <h1>🕚 TiTo <span class="info-icon" title="Click for more information">ℹ️</span></h1>
-              <span class="subtitle">Time Tracker Tool</span>
+                <h1>🕚 TiTo <span class="info-icon" role="button" aria-label="More information" tabindex="0">ℹ️</span></h1>
+                <span class="subtitle">Time Tracker Tool</span>
             </div>
-            <div class="section timer-section">
-                <h3>Timer</h3>
+
+            <div class="section timer-section" aria-labelledby="timer-heading">
+                <h2 id="timer-heading">Timer</h2>
                 <div class="button-container">
-                    <button id="playPauseButton">▶️</button>
-                    <button id="stopButton">⏹️</button>
+                    <button id="playPauseButton" aria-label="Play or Pause Timer">▶️</button>
+                    <button id="stopButton" aria-label="Stop Timer">⏹️</button>
                 </div>
-                <div id="timeDisplay">00:00:00</div>
-                <div id="timerProjectDisplay"></div>
+                <div id="timeDisplay" aria-live="polite" aria-atomic="true">00:00:00</div>
+                <div id="timerProjectDisplay" aria-live="polite" aria-atomic="true"></div>
             </div>
-            <button id="exportDatabaseButton" class="green-button">Export Database</button>
-            <button id="importDatabaseButton" class="green-button">Import Database</button>
+
+            <button id="exportDatabaseButton">Export Database</button>
+            <button id="importDatabaseButton">Import Database</button>
             <input type="file" id="importFileInput" style="display: none;" accept=".json">
             <button id="clearDatabaseButton" class="red-button">Clear Database</button>
         </div>
 
-        <div id="infoModal" class="modal">
-          <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>About TiTo</h2>
-            <p>Version: 1.06.1</p>
-            <p><a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank">Learn more about TiTo</a></p>
-            <p><a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank">Share your feedback</a></p>
-            <p><a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank">Support TiTo with a donation</a></p>
-          </div>
+        <div id="infoModal" class="modal" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+            <div class="modal-content">
+                <span class="close" role="button" aria-label="Close">&times;</span>
+                <h2 id="modal-title">About TiTo</h2>
+                <p>Version: 1.06.1</p>
+                <div class="footer-links">
+                    <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank">Learn more about TiTo</a>
+                    <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank">Share your feedback</a>
+                    <a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank">Support TiTo with a donation</a>
+                </div>
+            </div>
         </div>
 
-        <!-- Middle Column: Project Management -->
-        <div class="column">
-            <h2>Projects</h2>
+        <div class="column" role="region" aria-labelledby="projects-heading">
+            <h2 id="projects-heading">Projects</h2>
             <div class="add-project-container">
-                <input type="text" id="newProjectName" placeholder="Enter new project name">
+                <input type="text" id="newProjectName" placeholder="Enter new project name" aria-label="New project name">
                 <button id="addProjectButton">Add Project</button>
             </div>
             <div class="section">
-                <ul id="projectList">
-                    <!-- Project list items will be dynamically added here -->
-                </ul>
+                <ul id="projectList" role="list" aria-label="Project list"></ul>
             </div>
         </div>
 
-        <!-- Right Column: Time Entries -->
-        <div class="column">
+        <div class="column" role="region" aria-labelledby="time-entries-heading">
             <div class="section time-entries-section">
-                <h2>Time Entries</h2>
+                <h2 id="time-entries-heading">Time Entries</h2>
                 <div class="button-container">
                     <button id="addManualEntryButton">Add Manual Entry</button>
                     <button id="removeAllEntriesButton" class="red-button">Remove All Entries</button>
                 </div>
                 <div class="entries-per-page-container">
                     <label for="entriesPerPageSelect">Entries per page:</label>
-                    <select id="entriesPerPageSelect">
+                    <select id="entriesPerPageSelect" aria-label="Select number of entries per page">
                         <option value="5">5</option>
                         <option value="10" selected>10</option>
                         <option value="20">20</option>
@@ -74,37 +72,38 @@
                         <option value="custom">Custom</option>
                         <option value="all">All</option>
                     </select>
-                    <input type="number" id="customEntriesPerPage" min="1" style="display: none;">
+                    <input type="number" id="customEntriesPerPage" min="1" style="display:none;" aria-label="Custom number of entries per page">
                 </div>
-                <ul id="timeEntryList"></ul>
-                <div class="pagination-controls">
-                    <button id="firstPageButton">|<<</button>
-                    <button id="prevPageButton"><</button>
+                <ul id="timeEntryList" role="list" aria-label="Time entry list"></ul>
+                <div class="pagination-controls" role="navigation" aria-label="Pagination">
+                    <button id="firstPageButton" aria-label="First page">&lt;&lt;</button>
+                    <button id="prevPageButton" aria-label="Previous page">&lt;</button>
                     <span id="pageIndicator">
-                        Page <input type="number" id="currentPageInput" min="1" value="1"> of <span id="totalPages">1</span>
+                        Page <input type="number" id="currentPageInput" min="1" aria-label="Current page"> of <span id="totalPages">1</span>
                     </span>
-                    <button id="nextPageButton">></button>
-                    <button id="lastPageButton">>>|</button>
+                    <button id="nextPageButton" aria-label="Next page">&gt;</button>
+                    <button id="lastPageButton" aria-label="Last page">&gt;&gt;</button>
                 </div>
             </div>
         </div>
+
         <div class="chart-and-report-container">
-            <div class="tabs">
-                <button class="tab active" data-tab="overallTime">Overall Time</button>
-                <button class="tab" data-tab="timeRange">Time Range</button>
-                <button class="tab" data-tab="reports">Reports</button>
+            <div class="tabs" role="tablist">
+                <button id="overallTimeTab" class="tab active" role="tab" aria-selected="true" aria-controls="overallTimeSection" data-tab="overallTime">Overall Time</button>
+                <button id="timeRangeTab" class="tab" role="tab" aria-selected="false" aria-controls="timeRangeSection" data-tab="timeRange">Time Range</button>
+                <button id="reportsTab" class="tab" role="tab" aria-selected="false" aria-controls="reportsSection" data-tab="reports">Reports</button>
             </div>
             <div class="tab-content">
-                <div id="overallTimeSection" class="tab-section active">
+                <div id="overallTimeSection" class="tab-section active" role="tabpanel" aria-labelledby="overallTimeTab">
                     <h3>Overall Time Spent on Projects</h3>
-                    <canvas id="overallProjectChart"></canvas>
+                    <canvas id="overallProjectChart" role="img" aria-label="Chart showing overall time spent on projects"></canvas>
                 </div>
-                <div id="timeRangeSection" class="tab-section">
+
+                <div id="timeRangeSection" class="tab-section" role="tabpanel" aria-labelledby="timeRangeTab" hidden>
                     <h3>Time Spent in Selected Range</h3>
                     <div class="date-range-selector">
-                        <input type="date" id="startDate">
-                        <input type="date" id="endDate">
-                        <select id="quickDateRange">
+                        <label for="quickDateRange">Quick select:</label>
+                        <select id="quickDateRange" aria-label="Quick date range selection">
                             <option value="today">Today</option>
                             <option value="thisWeek">This Week</option>
                             <option value="thisMonth">This Month</option>
@@ -112,58 +111,47 @@
                             <option value="last30Days">Last 30 Days</option>
                             <option value="custom">Custom Range</option>
                         </select>
+                        <label for="startDate">Start date:</label>
+                        <input type="date" id="startDate" aria-label="Start date for custom range">
+                        <label for="endDate">End date:</label>
+                        <input type="date" id="endDate" aria-label="End date for custom range">
                         <button id="applyDateRange">Apply</button>
                     </div>
                     <div class="time-range-charts">
                         <div class="chart-wrapper">
-                            <canvas id="timeRangeBarChart"></canvas>
+                            <canvas id="timeRangePieChart" role="img" aria-label="Pie chart showing time distribution in selected range"></canvas>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="timeRangePieChart"></canvas>
+                            <canvas id="timeRangeBarChart" role="img" aria-label="Bar chart showing time spent on projects in selected range"></canvas>
                         </div>
                     </div>
                 </div>
-                <div id="reportsSection" class="tab-section">
+
+                <div id="reportsSection" class="tab-section" role="tabpanel" aria-labelledby="reportsTab" hidden>
                     <h2>Reports</h2>
                     <div class="report-controls">
-                        <select id="reportType">
+                        <label for="reportType">Report type:</label>
+                        <select id="reportType" aria-label="Select report type">
                             <option value="weekly">Weekly Summary</option>
                             <option value="monthly">Monthly Summary</option>
                         </select>
-                        <input type="date" id="reportStartDate">
-                        <input type="date" id="reportEndDate">
+                        <label for="reportStartDate">Start date:</label>
+                        <input type="date" id="reportStartDate" aria-label="Report start date">
+                        <label for="reportEndDate">End date:</label>
+                        <input type="date" id="reportEndDate" aria-label="Report end date">
                         <div id="projectSelectionControls">
                             <button id="selectAllProjects">Select All</button>
                             <button id="deselectAllProjects">Deselect All</button>
                         </div>
-                        <div id="projectSelection"></div>
+                        <div id="projectSelection" role="group" aria-label="Select projects for report"></div>
                         <button id="generateReport">Generate Report</button>
                     </div>
-                    <div id="reportResults"></div>
+                    <div id="reportResults" aria-live="polite"></div>
                 </div>
             </div>
         </div>
     </div>
-    <script>
-    const infoIcon = document.querySelector('.info-icon');
-    const modal = document.getElementById('infoModal');
-    const closeBtn = modal.querySelector('.close');
 
-    infoIcon.addEventListener('click', () => {
-      modal.style.display = 'block';
-    });
-
-    closeBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
-
-    window.addEventListener('click', (event) => {
-      if (event.target === modal) {
-        modal.style.display = 'none';
-      }
-    });
-    </script>
     <script src="script.js"></script>
 </body>
 </html>
-
