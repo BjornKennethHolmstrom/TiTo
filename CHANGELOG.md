@@ -5,7 +5,7 @@
 ### Features added and issues resolved
 
 - Added support for screen readers. Tested with Orca on Linux in Google Chrome.
-- Added translations to Spanish and Swedish
+- Added translations to Spanish, Swedish and Basque
 - Fixed issue with time entry list not showing on narrow view and mobile.
 
 

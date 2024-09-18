@@ -1,4 +1,4 @@
-# 🕚 TiTo Time Tracker - v 1.06.1
+# 🕚 TiTo Time Tracker - v 1.07.1
 
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
@@ -24,6 +24,7 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 - Info icon for quick access to app information and links
 - Support for screen readers
 - Multi-lingual support
+- Help modal
 
 ## Getting Started
 

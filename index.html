@@ -11,7 +11,7 @@
     <div class="container" role="main">
         <div class="column" role="region" aria-label="Project Management">
             <div class="title-container">
-                <h1>🕚 TiTo <span class="info-icon" role="button" aria-label="More information" tabindex="0">ℹ️</span></h1>
+                <h1>🕚 TiTo <span class="info-icon" role="button" aria-label="More information" tabindex="0">ℹ️</span><span class="help-icon" role="button" aria-label="Help" tabindex="0">❓</span></h1>
                 <span class="subtitle" data-i18n="subtitle">Time Tracker Tool</span>
             </div>
 
@@ -35,13 +35,20 @@
             <div class="modal-content">
                 <span class="close" role="button" aria-label="Close">&times;</span>
                 <h2 id="modal-title" data-i18n="aboutTiTo">About TiTo</h2>
-                <p data-i18n="version">Version: 1.07</p>
+                <p data-i18n="version">Version: 1.07.1</p>
                 <div class="footer-links">
                     <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank" data-i18n="learnMore">Learn more about TiTo</a>
                     <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank" data-i18n="shareFeedback">Share your feedback</a>
                     <a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank" data-i18n="supportTiTo">Support TiTo with a donation</a>
                 </div>
             </div>
+        </div>
+        <div id="helpModal" class="modal" role="dialog" aria-labelledby="help-modal-title" aria-hidden="true">
+          <div class="modal-content">
+            <button class="close" aria-label="Close">×</button>
+            <h2 id="help-modal-title" data-i18n="helpTitle">How to Use TiTo Time Tracker</h2>
+            <div id="helpContent" tabindex="0"></div>
+          </div>
         </div>
 
         <div class="column" role="region" aria-labelledby="projects-heading">

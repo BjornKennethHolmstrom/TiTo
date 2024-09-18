@@ -175,6 +175,18 @@ function initializeUI() {
     const exportDatabaseButton = document.getElementById('exportDatabaseButton');
     const importDatabaseButton = document.getElementById('importDatabaseButton');
     const importFileInput = document.getElementById('importFileInput');
+    const helpButton = document.querySelector('.help-icon');
+    const helpModal = document.getElementById('helpModal');
+    const helpCloseButton = helpModal.querySelector('.close');
+
+    helpButton.addEventListener('click', openHelpModal);
+    helpButton.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openHelpModal();
+        }
+    });
+    helpCloseButton.addEventListener('click', closeHelpModal);
 
     if (infoButton) {
         infoButton.addEventListener('click', openModal);
@@ -3152,8 +3164,81 @@ function closeModal() {
     }
 }
 
+function openHelpModal() {
+    const modal = document.getElementById('helpModal');
+    const helpContent = document.getElementById('helpContent');
+     
+    helpContent.innerHTML = `
+        <h3 data-i18n="gettingStarted">Getting Started</h3>
+        <p data-i18n="selectLanguage">Select your preferred language using the dropdown menu at the top of the page.</p>
+        
+        <h3 data-i18n="projects">Projects</h3>
+        <ul>
+            <li data-i18n="addProject">To add a project: Enter a name in the "Enter new project name" field and click "Add Project" or press Enter.</li>
+            <li data-i18n="reorderProjects">To reorder projects: Drag and drop projects in the list.</li>
+            <li data-i18n="deleteProject">To delete a project: Click the trash can icon (🗑️) next to the project name.</li>
+        </ul>
+
+        <h3 data-i18n="timeTracking">Time Tracking</h3>
+        <ul>
+            <li data-i18n="startTimer">To start timing: Select a project and click the play button (▶️).</li>
+            <li data-i18n="pauseResume">To pause/resume: Click the pause button (⏸️) to pause, and the play button (▶️) to resume.</li>
+            <li data-i18n="stopTimer">To stop timing: Click the stop button (⏹️).</li>
+            <li data-i18n="manualEntry">To add a manual entry: Click "Add Manual Entry" and adjust the times as needed.</li>
+        </ul>
+
+        <h3 data-i18n="timeEntries">Time Entries</h3>
+        <ul>
+            <li data-i18n="editEntry">To edit an entry: Click on the time or description of an existing entry.</li>
+            <li data-i18n="deleteEntry">To delete an entry: Click the trash can icon (🗑️) next to the entry.</li>
+            <li data-i18n="navigateEntries">To navigate entries: Use the pagination controls at the bottom of the list.</li>
+            <li data-i18n="customizeEntries">To customize entries per page: Use the "Entries per page" dropdown.</li>
+        </ul>
+
+        <h3 data-i18n="reportsAndVisualization">Reports and Visualization</h3>
+        <ul>
+            <li data-i18n="generateReport">To generate a report: Go to the "Reports" tab, select the type and date range, choose projects, and click "Generate Report".</li>
+            <li data-i18n="exportReport">To export a report: After generating, click on the desired format (CSV, PDF, or Markdown).</li>
+            <li data-i18n="viewCharts">To view time distribution charts: Use the "Overall Time" and "Time Range" tabs.</li>
+        </ul>
+
+        <h3 data-i18n="dataManagement">Data Management</h3>
+        <ul>
+            <li data-i18n="exportData">To export all data: Click the "Export Database" button.</li>
+            <li data-i18n="importData">To import data: Click the "Import Database" button and select a previously exported file.</li>
+            <li data-i18n="clearData">To clear all data: Use the "Clear Database" button (use with caution).</li>
+        </ul>
+    `;
+
+    updateUI(); // This will translate the content
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    
+    // Set focus to the first focusable element in the modal
+    const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusableElements.length) {
+        focusableElements[0].focus();
+    }
+
+    // Set up focus trap
+    modal.addEventListener('keydown', trapFocus);
+}
+
+function closeHelpModal() {
+    const modal = document.getElementById('helpModal');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    // Remove focus trap
+    modal.removeEventListener('keydown', trapFocus);
+    // Return focus to the help button
+    const helpButton = document.querySelector('.help-icon');
+    if (helpButton) {
+        helpButton.focus();
+    }
+}
+
 function trapFocus(e) {
-    const modal = document.getElementById('infoModal');
+    const modal = e.currentTarget;
     const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     const firstElement = focusableElements[0];
     const lastElement = focusableElements[focusableElements.length - 1];
@@ -3169,6 +3254,12 @@ function trapFocus(e) {
                 e.preventDefault();
                 firstElement.focus();
             }
+        }
+    } else if (e.key === 'Escape') {
+        if (modal.id === 'infoModal') {
+            closeModal();
+        } else if (modal.id === 'helpModal') {
+            closeHelpModal();
         }
     }
 }
