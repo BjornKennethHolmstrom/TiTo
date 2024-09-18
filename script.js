@@ -49,6 +49,7 @@ function addLanguageSwitcher() {
         <option value="en">English</option>
         <option value="es">Español</option>
         <option value="se">Svenska</option>
+        <option value="eu">Euskara</option>
     `;
     languageSwitch.value = currentLanguage; // Set the initial value
     languageSwitch.addEventListener('change', (e) => setLanguage(e.target.value));
@@ -89,16 +90,16 @@ function updateUI() {
         }
     });
     
+    // Update text content for elements with data-i18n attribute
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        element.textContent = getTranslation(key);
+    });
+    
     // Update placeholder texts
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
         const key = element.getAttribute('data-i18n-placeholder');
         element.placeholder = getTranslation(key);
-    });
-    
-    // Update button texts
-    document.querySelectorAll('button[data-i18n]').forEach(button => {
-        const key = button.getAttribute('data-i18n');
-        button.textContent = getTranslation(key);
     });
     
     // Refresh charts and other dynamic content
