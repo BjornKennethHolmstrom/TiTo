@@ -128,9 +128,9 @@ Accessing App Information:
 
 - Support for screen readers
 - Multi-lingual support
-- Customizable report templates
 - Improved aesthetics
 - Dark mode
+- Customizable report templates
 - Time goals
 - Enhanced data visualization
 

@@ -189,25 +189,40 @@ button:hover {
     background-color: #a93226;
 }
 
-#clearDatabaseButton.red-button {
-    background-color: #7B0323 !important;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+#exportDatabaseButton,
+#importDatabaseButton,
+#clearDatabaseButton {
+    width: 100%;
     margin-top: 10px;
-    width: calc(100% - 40px);
     padding: 10px;
     font-size: 16px;
-    align-self: center;
+    text-align: center;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
 }
 
-#clearDatabaseButton.red-button:hover {
-    background-color: #5E0219 !important;
+#exportDatabaseButton,
+#importDatabaseButton {
+    background-color: #007bff;
+    color: white;
 }
 
-#clearDatabaseButton.red-button:active {
-    background-color: #410111 !important;
+#exportDatabaseButton:hover,
+#importDatabaseButton:hover {
+    background-color: #0056b3;
+}
+
+#clearDatabaseButton {
+    background-color: #7B0323;
+    color: white;
+}
+
+#clearDatabaseButton:hover {
+    background-color: #5E0219;
+}
+
+#clearDatabaseButton:active {
+    background-color: #410111;
 }
 
 /* Timer section styles */

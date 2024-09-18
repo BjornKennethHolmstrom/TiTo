@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TiTo - Time Tracker Tool</title>
+    <title data-i18n="appTitle">TiTo Time Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -12,11 +12,11 @@
         <div class="column" role="region" aria-label="Project Management">
             <div class="title-container">
                 <h1>🕚 TiTo <span class="info-icon" role="button" aria-label="More information" tabindex="0">ℹ️</span></h1>
-                <span class="subtitle">Time Tracker Tool</span>
+                <span class="subtitle" data-i18n="subtitle">Time Tracker Tool</span>
             </div>
 
             <div class="section timer-section" aria-labelledby="timer-heading">
-                <h2 id="timer-heading">Timer</h2>
+                <h2 id="timer-heading" data-i18n="timerHeading">Timer</h2>
                 <div class="button-container">
                     <button id="playPauseButton" aria-label="Play or Pause Timer">▶️</button>
                     <button id="stopButton" aria-label="Stop Timer">⏹️</button>
@@ -25,30 +25,30 @@
                 <div id="timerProjectDisplay" aria-live="polite" aria-atomic="true"></div>
             </div>
 
-            <button id="exportDatabaseButton">Export Database</button>
-            <button id="importDatabaseButton">Import Database</button>
+            <button id="exportDatabaseButton" data-i18n="exportDatabase">Export Database</button>
+            <button id="importDatabaseButton" data-i18n="importDatabase">Import Database</button>
             <input type="file" id="importFileInput" style="display: none;" accept=".json">
-            <button id="clearDatabaseButton" class="red-button">Clear Database</button>
+            <button id="clearDatabaseButton" class="red-button" data-i18n="clearDatabase">Clear Database</button>
         </div>
 
         <div id="infoModal" class="modal" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
             <div class="modal-content">
                 <span class="close" role="button" aria-label="Close">&times;</span>
-                <h2 id="modal-title">About TiTo</h2>
-                <p>Version: 1.06.1</p>
+                <h2 id="modal-title" data-i18n="aboutTiTo">About TiTo</h2>
+                <p data-i18n="version">Version: 1.06.1</p>
                 <div class="footer-links">
-                    <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank">Learn more about TiTo</a>
-                    <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank">Share your feedback</a>
-                    <a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank">Support TiTo with a donation</a>
+                    <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank" data-i18n="learnMore">Learn more about TiTo</a>
+                    <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank" data-i18n="shareFeedback">Share your feedback</a>
+                    <a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank" data-i18n="supportTiTo">Support TiTo with a donation</a>
                 </div>
             </div>
         </div>
 
         <div class="column" role="region" aria-labelledby="projects-heading">
-            <h2 id="projects-heading">Projects</h2>
+            <h2 id="projects-heading" data-i18n="projects">Projects</h2>
             <div class="add-project-container">
-                <input type="text" id="newProjectName" placeholder="Enter new project name" aria-label="New project name">
-                <button id="addProjectButton">Add Project</button>
+                <input type="text" id="newProjectName" data-i18n-placeholder="enterProjectName" placeholder="Enter new project name">
+                <button id="addProjectButton" data-i18n="addProject">Add Project</button>
             </div>
             <div class="section">
                 <ul id="projectList" role="list" aria-label="Project list"></ul>
@@ -57,20 +57,20 @@
 
         <div class="column" role="region" aria-labelledby="time-entries-heading">
             <div class="section time-entries-section">
-                <h2 id="time-entries-heading">Time Entries</h2>
+                <h2 id="time-entries-heading" data-i18n="timeEntries">Time Entries</h2>
                 <div class="button-container">
-                    <button id="addManualEntryButton">Add Manual Entry</button>
-                    <button id="removeAllEntriesButton" class="red-button">Remove All Entries</button>
+                    <button id="addManualEntryButton" data-i18n="addManualEntry">Add Manual Entry</button>
+                    <button id="removeAllEntriesButton" class="red-button" data-i18n="removeAllEntries">Remove All Entries</button>
                 </div>
                 <div class="entries-per-page-container">
-                    <label for="entriesPerPageSelect">Entries per page:</label>
+                    <label for="entriesPerPageSelect" data-i18n="entriesPerPage">Entries per page:</label>
                     <select id="entriesPerPageSelect" aria-label="Select number of entries per page">
                         <option value="5">5</option>
                         <option value="10" selected>10</option>
                         <option value="20">20</option>
                         <option value="30">30</option>
-                        <option value="custom">Custom</option>
-                        <option value="all">All</option>
+                        <option value="custom" data-i18n="custom">Custom</option>
+                        <option value="all" data-i18n="all">All</option>
                     </select>
                     <input type="number" id="customEntriesPerPage" min="1" style="display:none;" aria-label="Custom number of entries per page">
                 </div>
@@ -89,33 +89,34 @@
 
         <div class="chart-and-report-container">
             <div class="tabs" role="tablist">
-                <button id="overallTimeTab" class="tab active" role="tab" aria-selected="true" aria-controls="overallTimeSection" data-tab="overallTime">Overall Time</button>
-                <button id="timeRangeTab" class="tab" role="tab" aria-selected="false" aria-controls="timeRangeSection" data-tab="timeRange">Time Range</button>
-                <button id="reportsTab" class="tab" role="tab" aria-selected="false" aria-controls="reportsSection" data-tab="reports">Reports</button>
+                <button id="overallTimeTab" class="tab active" role="tab" aria-selected="true" aria-controls="overallTimeSection" data-tab="overallTime" data-i18n="overallTime">Overall Time</button>
+                <button id="timeRangeTab" class="tab" role="tab" aria-selected="false" aria-controls="timeRangeSection" data-tab="timeRange" data-i18n="timeRange">Time Range</button>
+                <button id="reportsTab" class="tab" role="tab" aria-selected="false" aria-controls="reportsSection" data-tab="reports" data-i18n="reports">Reports</button>
             </div>
+
             <div class="tab-content">
                 <div id="overallTimeSection" class="tab-section active" role="tabpanel" aria-labelledby="overallTimeTab">
-                    <h3>Overall Time Spent on Projects</h3>
+                    <h3 data-i18n="overallTimeSpentOnProjects">Overall Time Spent on Projects</h3>
                     <canvas id="overallProjectChart" role="img" aria-label="Chart showing overall time spent on projects"></canvas>
                 </div>
 
                 <div id="timeRangeSection" class="tab-section" role="tabpanel" aria-labelledby="timeRangeTab" hidden>
-                    <h3>Time Spent in Selected Range</h3>
+                    <h3 data-i18n="timeSpentInSelectedRange">Time Spent in Selected Range</h3>
                     <div class="date-range-selector">
-                        <label for="quickDateRange">Quick select:</label>
+                        <label for="quickDateRange" data-i18n="quickSelect">Quick select:</label>
                         <select id="quickDateRange" aria-label="Quick date range selection">
-                            <option value="today">Today</option>
-                            <option value="thisWeek">This Week</option>
-                            <option value="thisMonth">This Month</option>
-                            <option value="last7Days">Last 7 Days</option>
-                            <option value="last30Days">Last 30 Days</option>
-                            <option value="custom">Custom Range</option>
+                            <option value="today" data-i18n="today">Today</option>
+                            <option value="thisWeek" data-i18n="thisWeek">This Week</option>
+                            <option value="thisMonth" data-i18n="thisMonth">This Month</option>
+                            <option value="last7Days" data-i18n="last7Days">Last 7 Days</option>
+                            <option value="last30Days" data-i18n="last30Days">Last 30 Days</option>
+                            <option value="custom" data-i18n="customRange">Custom Range</option>
                         </select>
-                        <label for="startDate">Start date:</label>
+                        <label for="startDate" data-i18n="startDate">Start date:</label>
                         <input type="date" id="startDate" aria-label="Start date for custom range">
-                        <label for="endDate">End date:</label>
+                        <label for="endDate" data-i18n="endDate">End date:</label>
                         <input type="date" id="endDate" aria-label="End date for custom range">
-                        <button id="applyDateRange">Apply</button>
+                        <button id="applyDateRange" data-i18n="apply">Apply</button>
                     </div>
                     <div class="time-range-charts">
                         <div class="chart-wrapper">
@@ -127,31 +128,31 @@
                     </div>
                 </div>
 
-                <div id="reportsSection" class="tab-section" role="tabpanel" aria-labelledby="reportsTab" hidden>
-                    <h2>Reports</h2>
+                 <div id="reportsSection" class="tab-section" role="tabpanel" aria-labelledby="reportsTab" hidden>
+                    <h2 data-i18n="reports">Reports</h2>
                     <div class="report-controls">
-                        <label for="reportType">Report type:</label>
+                        <label for="reportType" data-i18n="reportType">Report type:</label>
                         <select id="reportType" aria-label="Select report type">
-                            <option value="weekly">Weekly Summary</option>
-                            <option value="monthly">Monthly Summary</option>
+                            <option value="weekly" data-i18n="weeklySummary">Weekly Summary</option>
+                            <option value="monthly" data-i18n="monthlySummary">Monthly Summary</option>
                         </select>
-                        <label for="reportStartDate">Start date:</label>
+                        <label for="reportStartDate" data-i18n="startDate">Start date:</label>
                         <input type="date" id="reportStartDate" aria-label="Report start date">
-                        <label for="reportEndDate">End date:</label>
+                        <label for="reportEndDate" data-i18n="endDate">End date:</label>
                         <input type="date" id="reportEndDate" aria-label="Report end date">
                         <div id="projectSelectionControls">
-                            <button id="selectAllProjects">Select All</button>
-                            <button id="deselectAllProjects">Deselect All</button>
+                            <button id="selectAllProjects" data-i18n="selectAll">Select All</button>
+                            <button id="deselectAllProjects" data-i18n="deselectAll">Deselect All</button>
                         </div>
                         <div id="projectSelection" role="group" aria-label="Select projects for report"></div>
-                        <button id="generateReport">Generate Report</button>
+                        <button id="generateReport" data-i18n="generateReport">Generate Report</button>
                     </div>
                     <div id="reportResults" aria-live="polite"></div>
                 </div>
             </div>
         </div>
     </div>
-
+    <script src="translations.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

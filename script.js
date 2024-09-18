@@ -40,6 +40,65 @@ let isAllEntries = false;
 let totalPages = 1;
 let dragSrcEl = null;
 let currentReport = null;
+let currentLanguage = 'en'; // Default language
+
+function addLanguageSwitcher() {
+    const languageSwitch = document.createElement('select');
+    languageSwitch.id = 'languageSwitch';
+    languageSwitch.innerHTML = `
+        <option value="en">English</option>
+        <option value="es">Español</option>
+    `;
+    languageSwitch.value = currentLanguage; // Set the initial value
+    languageSwitch.addEventListener('change', (e) => setLanguage(e.target.value));
+    languageSwitch.style.marginTop = '20px';
+    document.querySelector('.title-container').appendChild(languageSwitch);
+}
+
+function setLanguage(lang) {
+    currentLanguage = lang;
+    localStorage.setItem('titoLanguage', lang);
+    updateUI();
+}
+
+function checkTranslationsLoaded() {
+    if (typeof translations === 'undefined') {
+        console.error('Translations not loaded. Make sure translations.js is included before script.js');
+        return false;
+    }
+    return true;
+}
+
+// Use this function before using translations, for example:
+function getTranslation(key) {
+    if (!checkTranslationsLoaded()) return key;
+    return translations[currentLanguage][key] || key;
+}
+
+function updateUI() {
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        element.textContent = getTranslation(key);
+    });
+    
+    // Update placeholder texts
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        element.placeholder = getTranslation(key);
+    });
+    
+    // Update button texts
+    document.querySelectorAll('button[data-i18n]').forEach(button => {
+        const key = button.getAttribute('data-i18n');
+        button.textContent = getTranslation(key);
+    });
+    
+    // Refresh charts and other dynamic content
+    if (currentProject) {
+        loadTimeEntries();
+    }
+    visualizeProjectData();
+}
 
 /* Initialization functions */
 document.addEventListener('DOMContentLoaded', function() {
@@ -47,6 +106,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeUI();
     startTimerDisplayUpdate();
     initializeKeyboardNavigation();
+
+    const savedLanguage = localStorage.getItem('titoLanguage');
+    if (savedLanguage) {
+        setLanguage(savedLanguage);
+    } else {
+        updateUI(); // Use default language
+    }
 
     dbReady
         .then(() => loadProjects())
@@ -296,13 +362,18 @@ function initializeUI() {
     }
     initializePaginationControls();
     initializeReportFeature();
+
+    addLanguageSwitcher();
+
+    // Initialize UI with default language
+    updateUI();
 }
 
 /* Project related functions */
 function addProject() {
     const projectName = document.getElementById('newProjectName').value.trim();
     if (!projectName) {
-        showError('Project name cannot be empty.');
+        showError(getTranslation('projectNameEmpty'));
         return;
     }
 
@@ -944,15 +1015,15 @@ function renderTimeEntryList(timeEntries) {
         descriptionInputContainer.appendChild(removeButton);
 
         // Append all elements
-        listItem.appendChild(document.createTextNode('Start: '));
+        listItem.appendChild(document.createTextNode(getTranslation('start') + ': '));
         listItem.appendChild(startDateInput);
         listItem.appendChild(startDateDisplay);
         listItem.appendChild(startTimeInput);
-        listItem.appendChild(document.createTextNode(' End: '));
+        listItem.appendChild(document.createTextNode(' ' + getTranslation('end') + ': '));
         listItem.appendChild(endDateInput);
         listItem.appendChild(endDateDisplay);
         listItem.appendChild(endTimeInput);
-        listItem.appendChild(document.createTextNode(' Total: '));
+        listItem.appendChild(document.createTextNode(' ' + getTranslation('totalTime') + ': '));
         listItem.appendChild(totalTimeSpan);
         listItem.appendChild(descriptionInputContainer);
 
@@ -1195,7 +1266,7 @@ function createDateInput(date, name, projectName) {
     input.type = 'date';
     input.name = name;
     input.value = formatDate(date);
-    input.setAttribute('aria-label', `${name === 'start-date' ? 'Start' : 'End'} date for ${projectName}`);
+    input.setAttribute('aria-label', `${getTranslation(name === 'start-date' ? 'start' : 'end')} ${getTranslation('date')} for ${projectName}`);
     input.addEventListener('change', function() {
         const display = this.nextElementSibling;
         display.textContent = formatDate(new Date(this.value));
@@ -1219,12 +1290,12 @@ function createTimeInput(date, name, projectName) {
     input.value = formatTime(date);
     input.placeholder = 'HH:MM';
     input.pattern = '([01]?[0-9]|2[0-3]):[0-5][0-9]';
-    input.title = 'Enter time in 24-hour format (HH:MM)';
-    input.setAttribute('aria-label', `${name === 'start-time' ? 'Start' : 'End'} time for ${projectName}`);
+    input.title = getTranslation('enterTimeFormat');
+    input.setAttribute('aria-label', `${getTranslation(name === 'start-time' ? 'start' : 'end')} ${getTranslation('time')} for ${projectName}`);
     
     input.addEventListener('blur', function() {
         if (this.value && !isValidTime(this.value)) {
-            showError('Invalid time format. Please use HH:MM in 24-hour format.');
+            showError('invalidTimeFormat');
             this.value = formatTime(new Date());
         }
     });
@@ -1474,10 +1545,10 @@ function updateTimerProjectDisplay() {
                 request.onsuccess = function(event) {
                     const project = event.target.result;
                     if (project) {
-                        timerProjectDisplay.textContent = `Timer running for: ${project.name}`;
+                        timerProjectDisplay.textContent = `${getTranslation('timerRunningFor')}: ${project.name}`;
                         timerProjectDisplay.style.display = 'block';
                     } else {
-                        timerProjectDisplay.textContent = 'Timer running for: Unknown project';
+                        timerProjectDisplay.textContent = `${getTranslation('timerRunningFor')}: ${getTranslation('unknownProject')}`;
                         timerProjectDisplay.style.display = 'block';
                     }
                 };
@@ -1826,7 +1897,7 @@ function updateOverallChart(projectTotals) {
     const chartData = {
         labels: labels,
         datasets: [{
-            label: 'Hours Spent',
+            label: getTranslation('hoursSpent'),
             data: data,
             backgroundColor: 'rgba(75, 192, 192, 0.6)',
             borderColor: 'rgba(75, 192, 192, 1)',
@@ -1841,14 +1912,14 @@ function updateOverallChart(projectTotals) {
                 beginAtZero: true,
                 title: {
                     display: true,
-                    text: 'Hours'
+                    text: getTranslation('hours')
                 }
             }
         },
         plugins: {
             title: {
                 display: true,
-                text: 'Overall Time Spent on Projects'
+                text: getTranslation('overallTimeSpentOnProjects')
             }
         }
     };
@@ -1927,7 +1998,7 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
         plugins: {
             title: {
                 display: true,
-                text: `Time Distribution (${startDate} to ${endDate})`
+                text: `${getTranslation('timeDistribution')} (${startDate} to ${endDate})`
             },
             legend: {
                 display: true,
@@ -1967,14 +2038,14 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
                 beginAtZero: true,
                 title: {
                     display: true,
-                    text: 'Hours'
+                    text: getTranslation('hours')
                 }
             }
         },
         plugins: {
             title: {
                 display: true,
-                text: `Time Spent on Projects (${startDate} to ${endDate})`
+                text: `${getTranslation('timeSpentOnProjects')} (${startDate} to ${endDate})`
             },
             legend: {
                 display: false
@@ -2386,13 +2457,7 @@ function displayReport(report, selectedColumns) {
     const headerRow = table.insertRow();
     selectedColumns.forEach(column => {
         const th = document.createElement('th');
-        switch(column) {
-            case 'period': th.textContent = 'Period'; break;
-            case 'totalTime': th.textContent = 'Total Time'; break;
-            case 'project': th.textContent = 'Project'; break;
-            case 'description': th.textContent = 'Description'; break;
-            case 'timeSpent': th.textContent = 'Time Spent'; break;
-        }
+        th.textContent = getTranslation(column);
         headerRow.appendChild(th);
     });
 
@@ -3098,7 +3163,7 @@ function clearDatabase() {
 
 /* Utility functions */
 function showError(message) {
-    alert(message); // For now, we'll use a simple alert. In the future, we can create a more sophisticated error display.
+    alert(getTranslation(message) || message);
 }
 
 function setTimerProject(projectId) {
