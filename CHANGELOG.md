@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## TiTo 1.07
+
+### Features added and issues resolved
+
+- Added support for screen readers. Tested with Orca on Linux in Google Chrome.
+- Added translations to Spanish and Swedish
+- Fixed issue with time entry list not showing on narrow view and mobile.
+
+
 ## TiTo 1.06.1
 
 - Added link for user feedback. Renamed link for support by donation and TiTo web page
@@ -30,7 +39,6 @@
 
 5. Documentation:
    - Updated README.md with new report feature instructions
-   - Updated CHANGELOG.md to reflect recent changes and improvements
 
 ## TiTo 1.05
 

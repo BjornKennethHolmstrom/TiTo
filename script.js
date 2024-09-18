@@ -48,6 +48,7 @@ function addLanguageSwitcher() {
     languageSwitch.innerHTML = `
         <option value="en">English</option>
         <option value="es">Español</option>
+        <option value="se">Svenska</option>
     `;
     languageSwitch.value = currentLanguage; // Set the initial value
     languageSwitch.addEventListener('change', (e) => setLanguage(e.target.value));
@@ -63,7 +64,7 @@ function setLanguage(lang) {
 
 function checkTranslationsLoaded() {
     if (typeof translations === 'undefined') {
-        console.error('Translations not loaded. Make sure translations.js is included before script.js');
+        log(LogLevel.ERROR,'Translations not loaded. Make sure translations.js is included before script.js');
         return false;
     }
     return true;
@@ -78,7 +79,14 @@ function getTranslation(key) {
 function updateUI() {
     document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
-        element.textContent = getTranslation(key);
+        if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+            // For checkboxes, update the label text
+            if (element.nextSibling && element.nextSibling.nodeType === Node.TEXT_NODE) {
+                element.nextSibling.textContent = getTranslation(key);
+            }
+        } else {
+            element.textContent = getTranslation(key);
+        }
     });
     
     // Update placeholder texts
@@ -156,6 +164,7 @@ function initializeDB() {
 }
 
 function initializeUI() {
+    const infoButton = document.querySelector('.info-icon');
     const addProjectButton = document.getElementById('addProjectButton');
     const playPauseButton = document.getElementById('playPauseButton');
     const stopButton = document.getElementById('stopButton');
@@ -165,6 +174,10 @@ function initializeUI() {
     const exportDatabaseButton = document.getElementById('exportDatabaseButton');
     const importDatabaseButton = document.getElementById('importDatabaseButton');
     const importFileInput = document.getElementById('importFileInput');
+
+    if (infoButton) {
+        infoButton.addEventListener('click', openModal);
+    }
 
     if (addManualEntryButton) {
         addManualEntryButton.addEventListener('click', addManualEntry);
@@ -362,11 +375,36 @@ function initializeUI() {
     }
     initializePaginationControls();
     initializeReportFeature();
+    initializeModal();
 
     addLanguageSwitcher();
 
     // Initialize UI with default language
     updateUI();
+}
+
+function initializeModal() {
+    console.log("Initializing modal");
+    const infoButton = document.querySelector('.info-icon');
+    const modal = document.getElementById('infoModal');
+    const closeButton = modal.querySelector('.close');
+
+    if (!infoButton || !modal || !closeButton) {
+        console.error("Modal elements not found:", { infoButton, modal, closeButton });
+        return;
+    }
+
+    infoButton.addEventListener('click', openModal);
+    closeButton.addEventListener('click', closeModal);
+
+    // Close the modal when clicking outside of it
+    window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    console.log("Modal initialization complete");
 }
 
 /* Project related functions */
@@ -818,7 +856,7 @@ function setCurrentProject(project) {
         selectedItem.classList.add('selected');
     }
 
-    console.log('Current project set to:', project);
+    log(LogLevel.INFO,'Current project set to:', project);
 
     return loadTimeEntries().catch(error => {
         log(LogLevel.ERROR, 'Error loading time entries:', error);
@@ -1224,7 +1262,7 @@ function updateTimeEntryOrder() {
     const timeEntryItems = document.querySelectorAll('#timeEntryList li');
     const newOrder = Array.from(timeEntryItems).map(item => parseInt(item.dataset.entryId));
     
-    console.log('New time entry order:', newOrder);
+    log(LogLevel.DEBUG,'New time entry order:', newOrder);
     
     dbReady.then(() => {
         let transaction = db.transaction(['timeEntries'], 'readwrite');
@@ -1424,7 +1462,7 @@ function removeTimeEntry(id) {
             let request = store.delete(id);
 
             request.onsuccess = function() {
-                console.log('Time entry removed');
+                log(LogLevel.INFO,'Time entry removed');
                 loadTimeEntries().then(() => {
                     if (document.getElementById('timeEntryList').children.length === 0 && currentPage > 1) {
                         currentPage--;
@@ -1460,7 +1498,7 @@ function addManualEntry() {
         description: '',
     };
 
-    console.log('Adding manual entry:', entry);
+    log(LogLevel.INFO,'Adding manual entry:', entry);
 
     dbReady.then(() => {
         let transaction = db.transaction(['timeEntries'], 'readwrite');
@@ -1469,7 +1507,7 @@ function addManualEntry() {
         let request = store.add(entry);
 
         request.onsuccess = function(event) {
-            console.log('Manual time entry added successfully');
+            log(LogLevel.INFO,'Manual time entry added successfully');
             currentPage = 1; // Reset to first page
             loadTimeEntries().then(() => {
                 const timeEntryList = document.getElementById('timeEntryList');
@@ -1763,7 +1801,7 @@ function initializeTabs() {
         tab.addEventListener('click', () => {
             const targetId = tab.getAttribute('data-tab');
             if (!targetId) {
-                console.error('data-tab attribute is missing on tab element');
+                log(LogLevel.ERROR,'data-tab attribute is missing on tab element');
                 return;
             }
             const targetSection = document.getElementById(`${targetId}Section`);
@@ -1792,7 +1830,7 @@ function initializeTabs() {
                     // If you need to do any initialization for the reports tab, do it here
                 }
             } else {
-                console.error(`Target section not found for tab: ${targetId}`);
+                log(LogLevel.ERROR,`Target section not found for tab: ${targetId}`);
             }
         });
     });
@@ -1873,6 +1911,11 @@ function visualizeProjectData(allTimeEntries) {
 }
 
 function updateOverallChart(projectTotals) {
+    if (typeof Chart === 'undefined') {
+        log(LogLevel.ERROR, 'Chart.js is not loaded. Please check your internet connection and make sure Chart.js is included in your HTML.');
+        return;
+    }
+
     if (!window.sortedProjects || window.sortedProjects.length === 0) {
         log(LogLevel.WARN, 'No projects available for chart visualization');
         return;
@@ -1937,10 +1980,24 @@ function updateOverallChart(projectTotals) {
     }
 }
 
+function loadChartJs() {
+    return new Promise((resolve, reject) => {
+        if (typeof Chart !== 'undefined') {
+            resolve();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load Chart.js'));
+        document.head.appendChild(script);
+    });
+}
+
 function updateTimeRangeCharts(projectTotals, startDate, endDate) {
     if (typeof Chart === 'undefined') {
-        log(LogLevel.ERROR, 'Chart.js is not loaded');
-        showError('Chart.js library is not available. Please check your internet connection and reload the page.');
+        log(LogLevel.ERROR, 'Chart.js is not loaded. Please check your internet connection and make sure Chart.js is included in your HTML.');
         return;
     }
 
@@ -2069,6 +2126,8 @@ function updateTimeRangeCharts(projectTotals, startDate, endDate) {
 /* Project report related functions */
 
 function initializeReportFeature() {
+    log(LogLevel.DEBUG,"Initializing report feature");
+    
     const reportType = document.getElementById('reportType');
     const startDate = document.getElementById('reportStartDate');
     const endDate = document.getElementById('reportEndDate');
@@ -2076,35 +2135,38 @@ function initializeReportFeature() {
     const selectAllButton = document.getElementById('selectAllProjects');
     const deselectAllButton = document.getElementById('deselectAllProjects');
 
+    log(LogLevel.DEBUG,"Report elements:", { reportType, startDate, endDate, generateButton, selectAllButton, deselectAllButton });
+
     if (!reportType || !startDate || !endDate || !generateButton || !selectAllButton || !deselectAllButton) {
-        console.error('One or more required elements for report feature not found');
+        log(LogLevel.ERROR,'One or more required elements for report feature not found');
         return;
     }
 
     // Set default dates
     const today = new Date();
     endDate.value = formatDate(today);
-    startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1)); // First day of current month
+    startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
 
-    // Populate project selection
-    populateProjectSelection().catch(error => {
-        console.error('Error populating project selection:', error);
+    log(LogLevel.DEBUG,"Populating project selection");
+    populateProjectSelection().then(() => {
+        log(LogLevel.DEBUG,"Project selection populated");
+        addColumnSelection();
+    }).catch(error => {
+        log(LogLevel.ERROR,'Error populating project selection:', error);
         alert('Failed to load projects. Please refresh the page and try again.');
     });
 
-    // Add column selection
-    addColumnSelection();
-
-    // Add event listeners
+    log(LogLevel.DEBUG,"Adding event listeners");
     generateButton.addEventListener('click', () => {
+        log(LogLevel.DEBUG,"Generate report button clicked");
         const selectedColumns = Array.from(document.querySelectorAll('#columnSelection input:checked'))
             .map(checkbox => checkbox.id.replace('column-', ''));
+        log(LogLevel.DEBUG,"Selected columns:", selectedColumns);
         generateReport(selectedColumns);
     });
     selectAllButton.addEventListener('click', selectAllProjects);
     deselectAllButton.addEventListener('click', deselectAllProjects);
 
-    // Add date input validation
     [startDate, endDate].forEach(input => {
         input.addEventListener('change', function() {
             if (!isValidDate(this.value)) {
@@ -2113,6 +2175,8 @@ function initializeReportFeature() {
             }
         });
     });
+    
+    log(LogLevel.DEBUG,"Report feature initialization complete");
 }
 
 function isValidDate(dateString) {
@@ -2290,23 +2354,29 @@ function startProjectRangeSelection(event) {
 }
 
 function generateReport(selectedColumns) {
+    log(LogLevel.DEBUG,"Generating report with columns:", selectedColumns);
     const reportType = document.getElementById('reportType').value;
     const startDate = new Date(document.getElementById('reportStartDate').value);
-    startDate.setHours(0, 0, 0, 0); // Set to start of day
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(document.getElementById('reportEndDate').value);
-    endDate.setHours(23, 59, 59, 999); // Set to end of day
+    endDate.setHours(23, 59, 59, 999);
     const selectedProjects = Array.from(document.querySelectorAll('#projectSelection input:checked')).map(cb => parseInt(cb.value));
 
+    log(LogLevel.DEBUG,"Report parameters:", { reportType, startDate, endDate, selectedProjects });
+
     if (selectedProjects.length === 0) {
-        alert('Please select at least one project.');
+        log(LogLevel.INFO,"No projects selected");
+        alert(getTranslation('selectAtLeastOneProject'));
         return;
     }
 
     if (startDate > endDate) {
-        alert('Start date cannot be after end date.');
+        log(LogLevel.INFO,"Invalid date range");
+        alert(getTranslation('startDateAfterEndDate'));
         return;
     }
 
+    log(LogLevel.INFO,"Fetching data from database");
     dbReady.then(() => {
         let transaction = db.transaction(['timeEntries', 'projects'], 'readonly');
         let timeEntryStore = transaction.objectStore('timeEntries');
@@ -2320,6 +2390,8 @@ function generateReport(selectedColumns) {
                 projectStore.getAll().onsuccess = (event) => resolve(event.target.result);
             })
         ]).then(([allTimeEntries, allProjects]) => {
+            log(LogLevel.INFO,"Data fetched:", { timeEntriesCount: allTimeEntries.length, projectsCount: allProjects.length });
+            
             const projectMap = new Map(allProjects.map(p => [p.id, p.name]));
             
             const filteredEntries = allTimeEntries.filter(entry => 
@@ -2331,8 +2403,11 @@ function generateReport(selectedColumns) {
                 projectName: projectMap.get(entry.projectId)
             }));
 
+            log(LogLevel.INFO,"Filtered entries:", filteredEntries.length);
+
             if (filteredEntries.length === 0) {
-                alert('No time entries found for the selected criteria.');
+                log(LogLevel.INFO,"No entries found");
+                alert(getTranslation('noEntriesFound'));
                 currentReport = null;
                 return;
             }
@@ -2344,11 +2419,12 @@ function generateReport(selectedColumns) {
                 report = generateMonthlyReport(filteredEntries, startDate, endDate);
             }
 
+            log(LogLevel.INFO,"Report generated:", report);
             currentReport = report;
             displayReport(report, selectedColumns);
         }).catch(error => {
-            console.error('Error generating report:', error);
-            alert('An error occurred while generating the report. Please try again.');
+            log(LogLevel.INFO,'Error generating report:', error);
+            alert(getTranslation('errorGeneratingReport'));
             currentReport = null;
         });
     });
@@ -2511,7 +2587,7 @@ function displayReport(report, selectedColumns) {
                         row.insertCell(cellIndex++).textContent = entry.projectName;
                         break;
                     case 'description':
-                        row.insertCell(cellIndex++).textContent = entry.description || 'No description';
+                        row.insertCell(cellIndex++).textContent = entry.description || getTranslation('noDescription');
                         break;
                     case 'timeSpent':
                         row.insertCell(cellIndex++).textContent = formatDuration(entry.duration);
@@ -2530,7 +2606,7 @@ function displayReport(report, selectedColumns) {
     paginationControls.className = 'pagination-controls';
 
     const prevButton = document.createElement('button');
-    prevButton.textContent = 'Previous';
+    prevButton.textContent = getTranslation('previous');
     prevButton.onclick = () => {
         if (currentPage > 1) {
             currentPage--;
@@ -2540,7 +2616,7 @@ function displayReport(report, selectedColumns) {
     };
 
     const nextButton = document.createElement('button');
-    nextButton.textContent = 'Next';
+    nextButton.textContent = getTranslation('next');
     nextButton.onclick = () => {
         if (currentPage < totalPages) {
             currentPage++;
@@ -2555,7 +2631,7 @@ function displayReport(report, selectedColumns) {
     paginationControls.appendChild(nextButton);
 
     function updatePaginationControls() {
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        pageInfo.textContent = getTranslation('pageXofY', { x: currentPage, y: totalPages });
         prevButton.disabled = currentPage === 1;
         nextButton.disabled = currentPage === totalPages;
     }
@@ -2600,9 +2676,9 @@ function exportReportAsCSV() {
             link.click();
             document.body.removeChild(link);
         }
-        console.log('CSV export successful');
+        log(LogLevel.INFO,'CSV export successful');
     } catch (error) {
-        console.error('Error exporting CSV:', error);
+        log(LogLevel.ERROR,'Error exporting CSV:', error);
         alert('An error occurred while exporting the CSV. Please try again.');
     }
 }
@@ -2699,19 +2775,19 @@ function exportReportAsPDF() {
         }
 
         doc.save('time_tracker_report.pdf');
-        console.log('PDF export successful');
+        log(LogLevel.INFO,'PDF export successful');
     } catch (error) {
-        console.error('Error generating PDF:', error);
+        log(LogLevel.ERROR,'Error generating PDF:', error);
         alert('An error occurred while generating the PDF. Please check if the jsPDF library is properly loaded and try again.');
     }
 }
 
 function debugJsPDF() {
     if (typeof jspdf !== 'undefined') {
-        console.log('jsPDF is loaded correctly');
-        console.log('jsPDF version:', jspdf.version);
+        log(LogLevel.INFO,'jsPDF is loaded correctly');
+        log(LogLevel.INFO,'jsPDF version:', jspdf.version);
     } else {
-        console.error('jsPDF is not loaded');
+        log(LogLevel.ERROR,'jsPDF is not loaded');
     }
 }
 
@@ -2791,7 +2867,7 @@ function exportReportAsMarkdown() {
         link.click();
         URL.revokeObjectURL(link.href);
     } catch (error) {
-        console.error('Error exporting Markdown:', error);
+        log(LogLevel.ERROR,'Error exporting Markdown:', error);
         alert('An error occurred while exporting the Markdown. Please try again.');
     }
 }
@@ -2827,24 +2903,26 @@ function addExportButtons() {
 }
 
 function debugReportData() {
-  console.log('Current report data:', window.currentReport);
+  log(LogLevel.DEBUG,'Current report data:', window.currentReport);
 }
 
 function addColumnSelection() {
+    log(LogLevel.DEBUG,"Adding column selection");
     const columnSelection = document.createElement('div');
     columnSelection.id = 'columnSelection';
     columnSelection.className = 'column-selection';
 
     const columns = [
-        { id: 'period', name: 'Period', checked: true },
-        { id: 'totalTime', name: 'Total Time', checked: true },
-        { id: 'description', name: 'Description', checked: true },
-        { id: 'timeSpent', name: 'Time Spent', checked: true },
-        { id: 'project', name: 'Project', checked: true }
+        { id: 'period', name: 'period', checked: true },
+        { id: 'totalTime', name: 'totalTime', checked: true },
+        { id: 'description', name: 'description', checked: true },
+        { id: 'timeSpent', name: 'timeSpent', checked: true },
+        { id: 'project', name: 'project', checked: true }
     ];
 
     const columnSelectionTitle = document.createElement('h4');
-    columnSelectionTitle.textContent = 'Select columns to display:';
+    columnSelectionTitle.textContent = getTranslation('selectColumnsToDisplay');
+    columnSelectionTitle.setAttribute('data-i18n', 'selectColumnsToDisplay');
     columnSelection.appendChild(columnSelectionTitle);
 
     columns.forEach(column => {
@@ -2855,12 +2933,19 @@ function addColumnSelection() {
         checkbox.checked = column.checked;
 
         label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(column.name));
+        const textNode = document.createTextNode(getTranslation(column.name));
+        label.appendChild(textNode);
+        label.setAttribute('data-i18n', column.name);
         columnSelection.appendChild(label);
     });
 
     const reportControls = document.querySelector('.report-controls');
-    reportControls.appendChild(columnSelection);
+    if (reportControls) {
+        reportControls.appendChild(columnSelection);
+        log(LogLevel.DEBUG,"Column selection added to report controls");
+    } else {
+        log(LogLevel.ERROR,"Report controls element not found");
+    }
 }
 
 function updateReportDisplay() {
@@ -2887,7 +2972,7 @@ function addSkipLinks() {
     skipLinksContainer.className = 'skip-links';
 
     const links = [
-        { text: 'Skip to project section', target: '.column:nth-child(2)' },
+        { text: 'Skip to project section', target: '.project-section' },
         { text: 'Skip to time entry section', target: '.time-entries-section' },
         { text: 'Skip to chart & report tabs', target: '.chart-and-report-container' }
     ];
@@ -2947,8 +3032,16 @@ function initializeReportGenerationKeyboardControl() {
 }
 
 function initializeModalKeyboardControl() {
+    const infoButton = document.querySelector('.info-icon');
     const modal = document.getElementById('infoModal');
     const closeButton = modal.querySelector('.close');
+
+    infoButton.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openModal();
+        }
+    });
 
     closeButton.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -3028,27 +3121,54 @@ function handleButtonKeyDown(event) {
 
 function openModal() {
     const modal = document.getElementById('infoModal');
-    modal.style.display = 'block';
-    modal.setAttribute('aria-hidden', 'false');
-    
-    // Set focus to the first focusable element in the modal
-    const firstFocusableElement = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (firstFocusableElement) {
-        firstFocusableElement.focus();
+    if (modal) {
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        
+        // Set focus to the first focusable element in the modal
+        const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusableElements.length) {
+            focusableElements[0].focus();
+        }
+
+        // Set up focus trap
+        modal.addEventListener('keydown', trapFocus);
     }
-    
-    // Store the element that had focus before opening the modal
-    modal.previouslyFocusedElement = document.activeElement;
 }
 
 function closeModal() {
     const modal = document.getElementById('infoModal');
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    
-    // Return focus to the element that had focus before opening the modal
-    if (modal.previouslyFocusedElement) {
-        modal.previouslyFocusedElement.focus();
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        // Remove focus trap
+        modal.removeEventListener('keydown', trapFocus);
+        // Return focus to the info button
+        const infoButton = document.querySelector('.info-icon');
+        if (infoButton) {
+            infoButton.focus();
+        }
+    }
+}
+
+function trapFocus(e) {
+    const modal = document.getElementById('infoModal');
+    const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.key === 'Tab') {
+        if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+            }
+        } else {
+            if (document.activeElement === lastElement) {
+                e.preventDefault();
+                firstElement.focus();
+            }
+        }
     }
 }
 
@@ -3136,12 +3256,12 @@ function clearDatabase() {
             let transaction = db.transaction(['projects', 'timeEntries'], 'readwrite');
             let projectStore = transaction.objectStore('projects');
             projectStore.clear().onsuccess = function() {
-                console.log('Projects cleared');
+                log(LogLevel.INFO,'Projects cleared');
                 loadProjects(); // Update UI after clearing
             };
             let timeEntryStore = transaction.objectStore('timeEntries');
             timeEntryStore.clear().onsuccess = function() {
-                console.log('Time entries cleared');
+                log(LogLevel.INFO,'Time entries cleared');
                 if (projectChart) {
                     projectChart.destroy();
                     projectChart = null;

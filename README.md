@@ -22,6 +22,8 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 - Built with vanilla JavaScript, HTML, and CSS
 - Offline functionality - works entirely in the browser
 - Info icon for quick access to app information and links
+- Support for screen readers
+- Multi-lingual support
 
 ## Getting Started
 
@@ -126,8 +128,6 @@ Accessing App Information:
 
 ## Future Plans
 
-- Support for screen readers
-- Multi-lingual support
 - Improved aesthetics
 - Dark mode
 - Customizable report templates
