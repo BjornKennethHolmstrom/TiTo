@@ -116,6 +116,10 @@
     margin-left: 10px;
 }
 
+.switch input {
+    display: none;
+}
+
 .slider {
     position: absolute;
     cursor: pointer;
@@ -223,6 +227,7 @@ h1 {
 }
 
 h2 {
+    margin-top: 20px;
     margin-bottom: 15px;
 }
 

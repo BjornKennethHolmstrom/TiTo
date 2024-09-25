@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Tito 1.08
+
+## Features added
+
+- Added dark mode
+- Added translations to French, German and Japanese
+
 ## TiTo 1.07
 
 ### Features added and issues resolved

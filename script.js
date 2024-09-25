@@ -40,8 +40,8 @@ let isAllEntries = false;
 let totalPages = 1;
 let dragSrcEl = null;
 let currentReport = null;
-let currentLanguage = 'en';
 let isDarkMode = false;
+let currentLanguage = localStorage.getItem('titoLanguage') || 'en';
 
 function addLanguageSwitcher() {
     const languageSwitch = document.createElement('select');
@@ -51,6 +51,9 @@ function addLanguageSwitcher() {
         <option value="es">Español</option>
         <option value="se">Svenska</option>
         <option value="eu">Euskara</option>
+        <option value="fr">Française</option>
+        <option value="de">Deutsch</option>
+        <option value="ja">日本語</option>
     `;
     languageSwitch.value = currentLanguage; // Set the initial value
     languageSwitch.addEventListener('change', (e) => setLanguage(e.target.value));
@@ -3217,7 +3220,7 @@ function openHelpModal() {
         
         <h3 data-i18n="projects">Projects</h3>
         <ul>
-            <li data-i18n="addProject">To add a project: Enter a name in the "Enter new project name" field and click "Add Project" or press Enter.</li>
+            <li data-i18n="addProjects">To add a project: Enter a name in the "Enter new project name" field and click "Add Project" or press Enter.</li>
             <li data-i18n="reorderProjects">To reorder projects: Drag and drop projects in the list.</li>
             <li data-i18n="deleteProject">To delete a project: Click the trash can icon (🗑️) next to the project name.</li>
         </ul>
@@ -3240,7 +3243,7 @@ function openHelpModal() {
 
         <h3 data-i18n="reportsAndVisualization">Reports and Visualization</h3>
         <ul>
-            <li data-i18n="generateReport">To generate a report: Go to the "Reports" tab, select the type and date range, choose projects, and click "Generate Report".</li>
+            <li data-i18n="generateReports">To generate a report: Go to the "Reports" tab, select the type and date range, choose projects, and click "Generate Report".</li>
             <li data-i18n="exportReport">To export a report: After generating, click on the desired format (CSV, PDF, or Markdown).</li>
             <li data-i18n="viewCharts">To view time distribution charts: Use the "Overall Time" and "Time Range" tabs.</li>
         </ul>
