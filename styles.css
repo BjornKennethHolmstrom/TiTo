@@ -1,3 +1,159 @@
+/* Color variables */
+:root {
+  /* Primary colors */
+  --color-primary: #007bff;
+  --color-primary-dark: #0056b3;
+  --color-primary-light: #e6f2ff;
+
+  /* Secondary colors */
+  --color-secondary: #4CAF50;
+  --color-secondary-dark: #45a049;
+
+  /* Accent colors */
+  --color-accent: #0799c5;
+  --color-accent-light: #66d3f4;
+
+  /* Background colors */
+  --color-background-main: #f4f4f4;
+  --color-background-card: #fff;
+  --color-background-alt: #f8f8f8;
+
+  /* Text colors */
+  --color-text-primary: #333;
+  --color-text-secondary: #555;
+  --color-text-tertiary: #666;
+
+  /* Border colors */
+  --color-border: #ddd;
+
+  /* Button colors */
+  --color-button-danger: #e74c3c;
+  --color-button-danger-dark: #c0392b;
+  --color-button-clear: #7B0323;
+  --color-button-clear-dark: #5E0219;
+
+  /* State colors */
+  --color-hover: #f0f0f0;
+  --color-active: #e0e0e0;
+
+  /* Chart colors */
+  --color-chart-bar: rgba(75, 192, 192, 0.6);
+  --color-chart-border: rgba(75, 192, 192, 1);
+
+  /* Miscellaneous */
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-modal-overlay: rgba(0,0,0,0.4);
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+  /* Primary colors */
+  --color-primary: #4dabf7;
+  --color-primary-dark: #339af0;
+  --color-primary-light: #1c7ed6;
+
+  /* Secondary colors */
+  --color-secondary: #69db7c;
+  --color-secondary-dark: #51cf66;
+
+  /* Accent colors */
+  --color-accent: #3bc9db;
+  --color-accent-light: #66d9e8;
+
+  /* Background colors */
+  --color-background-main: #121212;
+  --color-background-card: #1e1e1e;
+  --color-background-alt: #2c2c2c;
+
+  /* Text colors */
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary: #808080;
+
+  /* Border colors */
+  --color-border: #333;
+
+  /* Button colors */
+  --color-button-danger: #ff6b6b;
+  --color-button-danger-dark: #f03e3e;
+  --color-button-clear: #ffa8a8;
+  --color-button-clear-dark: #ff8787;
+
+  /* State colors */
+  --color-hover: #2a2a2a;
+  --color-active: #3a3a3a;
+
+  /* Chart colors */
+  --color-chart-bar: rgba(100, 255, 218, 0.6);
+  --color-chart-border: rgba(100, 255, 218, 1);
+
+  /* Miscellaneous */
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-modal-overlay: rgba(0,0,0,0.7);
+}
+
+.dark-mode-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+    width: 100%;
+}
+
+/* Style for the dark mode label */
+.dark-mode-label {
+    margin-right: 10px;
+    font-size: 14px;
+    color: var(--color-text-primary);
+}
+
+/* Adjust the switch styles */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    margin-left: 10px;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: var(--color-primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
 /* Reset and base styles */
 * {
     margin: 0;
@@ -7,8 +163,8 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: var(--color-background-main);
+    color: var(--color-text-primary);
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -26,9 +182,9 @@ body {
 }
 
 .column {
-    background: #fff;
+    background: var(--color-background-card);
     border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 10px var(--color-shadow);
     padding: 20px;
     flex: 1 1 300px;
     display: flex;
@@ -58,7 +214,7 @@ body {
 h1 {
     font-size: 2.5em;
     font-weight: 600;
-    color: #333;
+    color: var(--color-text-primary);
     line-height: 1.2;
     margin: 0;
     padding: 0;
@@ -73,13 +229,13 @@ h2 {
 h3 {
     font-size: 1.2em;
     margin-bottom: 15px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .subtitle {
     display: block;
     font-size: 0.8em;
-    color: #555;
+    color: var(--color-text-secondary);
     font-weight: normal;
     margin-top: 8px;
     letter-spacing: 0.5px;
@@ -98,44 +254,37 @@ h3 {
     margin-bottom: 20px;
 }
 
-.info-icon {
-  font-size: 0.5em;
-  vertical-align: super;
-  margin-left: 10px;
-  cursor: pointer;
+.info-icon, .help-icon {
+    font-size: 0.5em;
+    vertical-align: super;
+    margin-left: 10px;
+    cursor: pointer;
 }
 
-.info-icon:hover {
-  opacity: 0.7;
-}
-
-.help-icon {
-  font-size: 0.5em;
-  vertical-align: super;
-  margin-left: 5px;
-  cursor: pointer;
-}
-
-.help-icon:hover {
-  opacity: 0.7;
+.info-icon:hover, .help-icon:hover {
+    opacity: 0.7;
 }
 
 /* Form element styles */
 input[type="text"] {
     width: 200px;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     margin-bottom: 10px;
+    background-color: var(--color-background-card);
+    color: var(--color-text-primary);
 }
 
 input[type="date"],
 input[name$="-time"] {
     margin: 0 2px;
     padding: 3px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 12px;
+    background-color: var(--color-background-card);
+    color: var(--color-text-primary);
 }
 
 input[type="date"] {
@@ -149,9 +298,9 @@ input[name$="-time"] {
 
 /* Button styles */
 button {
-    background-color: #007bff;
+    background-color: var(--color-primary);
     border: none;
-    color: white;
+    color: var(--color-background-card);
     padding: 10px 20px;
     text-align: center;
     text-decoration: none;
@@ -164,12 +313,12 @@ button {
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary-dark);
 }
 
 .green-button {
-    background-color: #4CAF50; /* Green */
-    color: white;
+    background-color: var(--color-secondary);
+    color: var(--color-background-card);
     border: none;
     cursor: pointer;
     transition: background-color 0.3s ease;
@@ -181,23 +330,23 @@ button:hover {
 }
 
 .green-button:hover {
-    background-color: #45a049;
+    background-color: var(--color-secondary-dark);
 }
 
 .green-button:active {
-    background-color: #3e8e41;
+    background-color: var(--color-secondary-dark);
 }
 
 .red-button {
-    background-color: #e74c3c;
+    background-color: var(--color-button-danger);
 }
 
 .red-button:hover {
-    background-color: #c0392b;
+    background-color: var(--color-button-danger-dark);
 }
 
 .red-button:active {
-    background-color: #a93226;
+    background-color: var(--color-button-danger-dark);
 }
 
 #exportDatabaseButton,
@@ -214,26 +363,26 @@ button:hover {
 
 #exportDatabaseButton,
 #importDatabaseButton {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-background-card);
 }
 
 #exportDatabaseButton:hover,
 #importDatabaseButton:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary-dark);
 }
 
 #clearDatabaseButton {
-    background-color: #7B0323;
-    color: white;
+    background-color: var(--color-button-clear);
+    color: var(--color-background-card);
 }
 
 #clearDatabaseButton:hover {
-    background-color: #5E0219;
+    background-color: var(--color-button-clear-dark);
 }
 
 #clearDatabaseButton:active {
-    background-color: #410111;
+    background-color: var(--color-button-clear-dark);
 }
 
 /* Timer section styles */
@@ -257,7 +406,7 @@ button:hover {
 #timerProjectDisplay {
     margin-top: 5px;
     font-size: 0.9em;
-    color: #666;
+    color: var(--color-text-tertiary);
     line-height: 1;
 }
 
@@ -280,6 +429,7 @@ button:hover {
     align-items: center;
     transition: transform 0.2s ease, opacity 0.2s ease;
     padding: 0;
+    color: var(--color-text-primary);
 }
 
 #playPauseButton:hover, #stopButton:hover {
@@ -299,8 +449,8 @@ ul {
 li {
     margin: 5px 0;
     padding: 10px;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
+    background-color: var(--color-background-alt);
+    border: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -329,15 +479,17 @@ li button {
 .add-project-container input[type="text"] {
     flex-grow: 1;
     padding: 5px 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--color-background-card);
+    color: var(--color-text-primary);
 }
 
 .add-project-container button {
     padding: 5px 10px;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-background-card);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -346,7 +498,7 @@ li button {
 }
 
 .add-project-container button:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary-dark);
 }
 
 /* Project list styles */
@@ -371,16 +523,16 @@ li button {
 }
 
 #projectList::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--color-background-alt);
 }
 
 #projectList::-webkit-scrollbar-thumb {
-    background: #888;
+    background: var(--color-border);
     border-radius: 4px;
 }
 
 #projectList::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: var(--color-text-tertiary);
 }
 
 #projectList li {
@@ -389,28 +541,28 @@ li button {
     align-items: center;
     padding: 10px;
     margin-bottom: 5px;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
+    background-color: var(--color-background-alt);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     cursor: pointer;
     transition: transform 0.2s ease;
 }
 
 #projectList li.selected {
-    background-color: #e6f2ff;
+    background-color: var(--color-primary-light);
     font-weight: bold;
-    border-left: 4px solid #007bff;
+    border-left: 4px solid var(--color-primary);
 }
 
 #projectList li:hover .project-name::after {
     content: " ✎";
     font-size: 0.8em;
-    color: #007bff;
+    color: var(--color-primary);
     margin-left: 5px;
 }
 
 #projectList li.over {
-    border-top: 2px solid #000;
+    border-top: 2px solid var(--color-text-primary);
 }
 
 #projectList li.dragging {
@@ -428,19 +580,19 @@ li button {
 }
 
 .project-name:hover {
-    background-color: rgba(0, 123, 255, 0.1);
+    background-color: var(--color-hover);
 }
 
 .project-name:focus {
     outline: none;
-    border-color: #007bff;
-    background-color: #fff;
+    border-color: var(--color-primary);
+    background-color: var(--color-background-card);
     cursor: text;
 }
 
 .remove-project-button {
     background-color: transparent;
-    color: #333;
+    color: var(--color-text-primary);
     border: none;
     padding: 5px;
     cursor: pointer;
@@ -474,24 +626,24 @@ li button {
     align-items: center;
     padding: 10px;
     margin-bottom: 10px;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
+    background-color: var(--color-background-alt);
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     cursor: move;
     transition: background-color 0.3s ease;
 }
 
 #timeEntryList li:hover {
-    background-color: #f0f0f0;
+    background-color: var(--color-hover);
 }
 
 #timeEntryList li.dragging {
     opacity: 0.5;
-    background-color: #e0e0e0;
+    background-color: var(--color-active);
 }
 
 #timeEntryList li.over {
-    border-top: 2px solid #007bff;
+    border-top: 2px solid var(--color-primary);
 }
 
 .time-entry-text {
@@ -514,16 +666,18 @@ li button {
 .date-display {
     margin: 0 5px;
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-tertiary);
 }
 
 .description-input {
     flex: 1;
     padding: 5px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
     min-width: 0;
+    background-color: var(--color-background-card);
+    color: var(--color-text-primary);
 }
 
 .description-input-container {
@@ -541,7 +695,7 @@ li button {
 
 .remove-time-entry-button {
     background-color: transparent;
-    color: #333;
+    color: var(--color-text-primary);
     border: none;
     cursor: pointer;
     font-size: 18px;
@@ -551,30 +705,30 @@ li button {
 }
 
 .remove-time-entry-button:hover {
-    color: #d9534f;
+    color: var(--color-button-danger);
     transform: scale(1.2);
 }
 
 #addManualEntryButton {
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--color-secondary);
+    color: var(--color-background-card);
 }
 
 #addManualEntryButton:hover {
-    background-color: #45a049;
+    background-color: var(--color-secondary-dark);
 }
 
 #removeAllEntriesButton {
-    background-color: #7B0323;
-    color: white;
+    background-color: var(--color-button-clear);
+    color: var(--color-background-card);
 }
 
 #removeAllEntriesButton:hover {
-    background-color: #5E0219;
+    background-color: var(--color-button-clear-dark);
 }
 
 #removeAllEntriesButton:active {
-    background-color: #410111;
+    background-color: var(--color-button-clear-dark);
 }
 
 /* Pagination controls */
@@ -586,8 +740,8 @@ li button {
 }
 
 .pagination-controls button {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-background-card);
     border: none;
     padding: 5px 10px;
     margin: 0 5px;
@@ -597,11 +751,11 @@ li button {
 }
 
 .pagination-controls button:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary-dark);
 }
 
 .pagination-controls button:disabled {
-    background-color: #cccccc;
+    background-color: var(--color-border);
     cursor: not-allowed;
 }
 
@@ -614,9 +768,11 @@ li button {
     width: 50px;
     text-align: center;
     font-weight: bold;
-    border: 1px solid #007bff;
+    border: 1px solid var(--color-primary);
     border-radius: 4px;
     padding: 2px;
+    background-color: var(--color-background-card);
+    color: var(--color-text-primary);
 }
 
 /* Charts and report styles */
@@ -627,7 +783,7 @@ li button {
 
 .tabs {
     display: flex;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--color-border);
     gap: 5px;
     margin-bottom: 15px;
 }
@@ -635,21 +791,21 @@ li button {
 .tab {
     padding: 10px 20px;
     border: none;
-    background: #f0f0f0;
+    background: var(--color-background-alt);
     cursor: pointer;
-    color: #007bff;
+    color: var(--color-primary);
     transition: background-color 0.3s, color 0.3s;
     border-radius: 5px 5px 0 0;
 }
 
 .tab:hover {
-    background-color: #e0e0e0;
+    background-color: var(--color-hover);
 }
 
 .tab.active {
-    background-color: #007bff;
-    color: white;
-    border-bottom: 2px solid #0056b3;
+    background-color: var(--color-primary);
+    color: var(--color-background-card);
+    border-bottom: 2px solid var(--color-primary-dark);
 }
 
 .tab-content {
@@ -674,7 +830,6 @@ li button {
 }
 
 #projectChart {
-/*    width: 100% !important;*/
     height: 100% !important;
 }
 
@@ -694,24 +849,25 @@ li button {
 .report-controls input[type="date"],
 .report-controls button {
   padding: 5px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
+  background-color: var(--color-background-card);
+  color: var(--color-text-primary);
 }
 
 .report-controls input[type="date"] {
-    width: 150px;  /* Increased from default. Adjust as needed */
+    width: 150px;
     padding: 5px 10px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
 }
 
-/* Ensure consistent styling across browsers */
 .report-controls input[type="date"]::-webkit-calendar-picker-indicator {
     margin-left: 0.5em;
+    filter: invert(0.5);
 }
 
-/* Adjust spacing between date inputs if needed */
 .report-controls input[type="date"] + input[type="date"] {
     margin-left: 10px;
 }
@@ -771,7 +927,7 @@ li button {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 1em;
-    color: #555;
+    color: var(--color-text-secondary);
 }
 
 .column-selection label {
@@ -792,27 +948,27 @@ li button {
 
 .report-table th,
 .report-table td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   padding: 8px;
   text-align: left;
 }
 
 .report-table th {
-  background-color: #f2f2f2;
+  background-color: var(--color-background-alt);
   font-weight: bold;
 }
 
 .report-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: var(--color-background-alt);
 }
 
 .report-table tr:hover {
-  background-color: #f5f5f5;
+  background-color: var(--color-hover);
 }
 
 .report-table td[rowspan] {
   vertical-align: top;
-  background-color: #e9e9e9;
+  background-color: var(--color-background-alt);
 }
 
 .report-table ul {
@@ -832,8 +988,8 @@ li button {
 
 .export-buttons button {
     padding: 10px 15px;
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--color-secondary);
+    color: var(--color-background-card);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -841,7 +997,7 @@ li button {
 }
 
 .export-buttons button:hover {
-    background-color: #45a049;
+    background-color: var(--color-secondary-dark);
 }
 
 /* Modal styles */
@@ -854,20 +1010,20 @@ li button {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.4);
+    background-color: var(--color-modal-overlay);
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--color-background-card);
     margin: 15% auto;
     padding: 20px;
-    border: 1px solid #888;
+    border: 1px solid var(--color-border);
     width: 80%;
     max-width: 500px;
 }
 
 .close {
-    color: #aaa;
+    color: var(--color-text-tertiary);
     float: right;
     font-size: 28px;
     font-weight: bold;
@@ -876,7 +1032,7 @@ li button {
 
 .close:hover,
 .close:focus {
-    color: black;
+    color: var(--color-text-primary);
     text-decoration: none;
     cursor: pointer;
 }
@@ -899,14 +1055,14 @@ li button {
 }
 
 .footer-link {
-  color: #0799c5;
+  color: var(--color-accent);
   text-decoration: none;
   font-size: 0.9em;
   transition: color 0.3s ease;
 }
 
 .footer-link:hover {
-  color: #66d3f4;
+  color: var(--color-accent-light);
 }
 
 /* Responsive styles */

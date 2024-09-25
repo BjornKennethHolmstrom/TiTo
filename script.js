@@ -40,7 +40,8 @@ let isAllEntries = false;
 let totalPages = 1;
 let dragSrcEl = null;
 let currentReport = null;
-let currentLanguage = 'en'; // Default language
+let currentLanguage = 'en';
+let isDarkMode = false;
 
 function addLanguageSwitcher() {
     const languageSwitch = document.createElement('select');
@@ -75,6 +76,47 @@ function checkTranslationsLoaded() {
 function getTranslation(key) {
     if (!checkTranslationsLoaded()) return key;
     return translations[currentLanguage][key] || key;
+}
+
+function addDarkModeToggle() {
+    const settingsContainer = document.querySelector('.settings-container');
+    if (!settingsContainer) {
+        console.error('Settings container not found');
+        return;
+    }
+
+    const toggleHtml = `
+        <div class="dark-mode-container">
+            <span class="dark-mode-label" data-i18n="darkMode">Dark Mode</span>
+            <label class="switch">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="slider round"></span>
+            </label>
+        </div>
+    `;
+
+    settingsContainer.insertAdjacentHTML('beforeend', toggleHtml);
+
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        // Check if dark mode was previously enabled
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+        darkModeToggle.checked = isDarkMode;
+        document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+
+        darkModeToggle.addEventListener('change', function() {
+            if (this.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('darkMode', 'false');
+            }
+        });
+    }
+
+    // Update the text for the current language
+    //updateUI();
 }
 
 function updateUI() {
@@ -391,6 +433,7 @@ function initializeUI() {
     initializeModal();
 
     addLanguageSwitcher();
+    addDarkModeToggle();
 
     // Initialize UI with default language
     updateUI();
