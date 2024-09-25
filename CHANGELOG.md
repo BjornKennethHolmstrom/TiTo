@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Tito 1.08
+## Tito 1.08.1
 
 ### Features added
 
