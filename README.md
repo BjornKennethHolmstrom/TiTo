@@ -4,27 +4,40 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 
 ## Features
 
-- Clean three-column layout for easy navigation
-- Create and manage multiple projects
-- Start, pause, and stop a timer for active time tracking
-- Add manual time entries
-- Drag-and-drop interface for reordering projects and time entries
-- View and edit time entries with custom date and time inputs
-- Paginated time entries list with customizable entries per page (5, 10, 20, 30, custom, or all)
-- Editable page number for quick navigation through time entries
-- Charts displaying time spent on different projects:
-  - Overall time distribution
-  - Time spent in selected date ranges
-- Monthly or weekly reports with export to CSV, PDF or markdown 
-- Date range selection for detailed data analysis
-- Local data storage using IndexedDB
-- Import/Export functionality for database backup and transfer
-- Built with vanilla JavaScript, HTML, and CSS
-- Offline functionality - works entirely in the browser
-- Info icon for quick access to app information and links
-- Support for screen readers
-- Multi-lingual support
-- Help modal
+### 1. **Core User Experience (UX) Features**
+   - Clean three-column layout for easy navigation
+   - Multi-lingual support
+   - Dark mode
+   - Support for screen reader (tested with Orca on Linux Mint)
+   - Support for keyboard navigation (tested in Chrome on Linux Mint)
+   - Help modal
+   - Info icon for quick access to app information and links
+
+### 2. **Core Time Tracking Features**
+   - Start, pause, and stop a timer for active time tracking
+   - Add manual time entries
+   - View and edit time entries with custom date and time inputs
+   - Create and manage multiple projects
+   - Drag-and-drop interface for reordering projects and time entries
+
+### 3. **Time Entry Management**
+   - Paginated time entries list with customizable entries per page (5, 10, 20, 30, custom, or all)
+   - Editable page number for quick navigation through time entries
+
+### 4. **Reporting and Visualization**
+   - Charts displaying time spent on different projects:
+     - Overall time distribution
+     - Time spent in selected date ranges
+   - Monthly or weekly reports with export to CSV, PDF, or markdown
+   - Date range selection for detailed data analysis
+
+### 5. **Technical and Functional Features**
+   - Local data storage using IndexedDB
+   - Import/Export of database from/into .JSON-file for backup and transfer
+   - Offline functionality - works entirely in the browser
+
+### 6. **Technical Stack**
+   - Built with vanilla JavaScript, HTML, and CSS
 
 ## Getting Started
 
@@ -130,10 +143,10 @@ Accessing App Information:
 ## Future Plans
 
 - Improved aesthetics
-- Dark mode
 - Customizable report templates
 - Time goals
 - Enhanced data visualization
+- More languages
 
 ## License
 

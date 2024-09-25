@@ -116,7 +116,7 @@
     margin-left: 10px;
 }
 
-.switch input {
+.switch input[type="checkbox"] {
     display: none;
 }
 
@@ -899,7 +899,9 @@ li button {
 }
 
 #projectSelection input[type="checkbox"] {
-  margin-right: 5px;
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
 }
 
 #generateReport {
@@ -908,8 +910,9 @@ li button {
 }
 
 .project-checkbox-wrapper {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
 }
 
 .project-checkbox-wrapper input[type="checkbox"] {
@@ -936,13 +939,16 @@ li button {
 }
 
 .column-selection label {
-    display: inline-block;
-    margin-right: 20px;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 15px;
     margin-bottom: 8px;
 }
 
 .column-selection input[type="checkbox"] {
+    display: inline-block;
     margin-right: 5px;
+    vertical-align: middle;
 }
 
 .report-table {
