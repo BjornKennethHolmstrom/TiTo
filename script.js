@@ -2297,44 +2297,76 @@ function initializeProjectSelection() {
     const projectSelection = document.getElementById('projectSelection');
     let isMouseDown = false;
     let startElement = null;
+    let startX, startY;
     let dragStarted = false;
+    const dragThreshold = 5; // pixels
+    const dragDelay = 150; // milliseconds
+    let dragTimeout;
+    let initialCheckState = false;
 
     projectSelection.addEventListener('mousedown', (e) => {
         isMouseDown = true;
         startElement = e.target.closest('.project-checkbox-wrapper');
-        dragStarted = false;  // Reset drag state
+        startX = e.clientX;
+        startY = e.clientY;
+        dragStarted = false;
 
         if (startElement) {
-            // Toggle checkbox on mousedown (for single click selection)
             const checkbox = startElement.querySelector('input[type="checkbox"]');
-            checkbox.checked = !checkbox.checked;
+            initialCheckState = checkbox.checked;
+            
+            dragTimeout = setTimeout(() => {
+                dragStarted = true;
+                // Toggle the initial checkbox when drag starts
+                checkbox.checked = !initialCheckState;
+            }, dragDelay);
         }
     });
 
     projectSelection.addEventListener('mousemove', (e) => {
-        if (!isMouseDown) return;  // Do nothing if mouse is not down
+        if (!isMouseDown || !startElement) return;
 
-        dragStarted = true;  // Drag operation is starting
-        const currentElement = e.target.closest('.project-checkbox-wrapper');
+        const deltaX = Math.abs(e.clientX - startX);
+        const deltaY = Math.abs(e.clientY - startY);
 
-        // If we've moved to a new element, toggle its checkbox
-        if (currentElement && currentElement !== startElement) {
-            const checkbox = currentElement.querySelector('input[type="checkbox"]');
-            checkbox.checked = !checkbox.checked;
-            startElement = currentElement;
+        if (deltaX > dragThreshold || deltaY > dragThreshold) {
+            clearTimeout(dragTimeout);
+            if (!dragStarted) {
+                dragStarted = true;
+                // Toggle the initial checkbox when drag starts
+                const checkbox = startElement.querySelector('input[type="checkbox"]');
+                checkbox.checked = !initialCheckState;
+            }
+        }
+
+        if (dragStarted) {
+            const currentElement = e.target.closest('.project-checkbox-wrapper');
+            if (currentElement && currentElement !== startElement) {
+                const checkbox = currentElement.querySelector('input[type="checkbox"]');
+                checkbox.checked = !initialCheckState;
+                startElement = currentElement;
+            }
         }
     });
 
     document.addEventListener('mouseup', (e) => {
-        isMouseDown = false;
-
-        // If no drag occurred (simple click), ensure the checkbox is toggled correctly
-        if (!dragStarted && startElement) {
-            const checkbox = startElement.querySelector('input[type="checkbox"]');
-            checkbox.checked = !checkbox.checked;  // Toggle again to undo extra toggle from mousedown
+        if (isMouseDown && startElement) {
+            if (!dragStarted) {
+                // Toggle on click
+                const checkbox = startElement.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            } else {
+                // Ensure the last checkbox is toggled if drag ended on it
+                const currentElement = e.target.closest('.project-checkbox-wrapper');
+                if (currentElement && currentElement !== startElement) {
+                    const checkbox = currentElement.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !initialCheckState;
+                }
+            }
         }
 
-        // Reset drag status and startElement
+        clearTimeout(dragTimeout);
+        isMouseDown = false;
         startElement = null;
         dragStarted = false;
     });
