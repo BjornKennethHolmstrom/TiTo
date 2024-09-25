@@ -2,10 +2,16 @@
 
 ## Tito 1.08
 
-## Features added
+### Features added
 
 - Added dark mode
 - Added translations to French, German and Japanese
+- Added logotype/icon
+
+### Issues resolved
+
+- Fixed drag selecting projects in generate report tab
+- Fixed duplicate translation tags
 
 ## TiTo 1.07
 

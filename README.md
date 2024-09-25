@@ -88,11 +88,6 @@ Adding Manual Entries:
 Editing Time Entries:
 - Click on the time or description of an existing entry to edit it.
 
-Sorting Time Entries:
-- Click "Sort Newest First" to sort time entries with the most recent at the top.
-- Click "Sort Oldest First" to sort time entries with the oldest at the top.
-- The last clicked sorting button will affect where new manual time entries are placed in the list.
-
 Navigating Time Entries:
 - Use the pagination controls at the bottom of the time entries list to navigate between pages.
 - Click on the current page number to edit it directly and jump to a specific page.
