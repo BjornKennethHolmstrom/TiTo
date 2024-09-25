@@ -12,6 +12,7 @@
 
 - Fixed drag selecting projects in generate report tab
 - Fixed duplicate translation tags
+- Make Total Time label stay together with the total time in time entries
 
 ## TiTo 1.07
 

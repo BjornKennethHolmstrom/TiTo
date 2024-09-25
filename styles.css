@@ -692,6 +692,18 @@ li button {
     margin: 5px 0;
 }
 
+.total-time-container {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: 10px;
+    flex-shrink: 0;  /* Prevent this container from shrinking */
+}
+
+.total-time-label {
+    margin-right: 5px;
+}
+
 .total-time {
     margin-right: 10px;
     font-weight: bold;

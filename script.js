@@ -1075,11 +1075,21 @@ function renderTimeEntryList(timeEntries) {
         const endDateDisplay = createDateDisplay(endDate, 'end-date-display');
         const endTimeInput = createTimeInput(endDate, 'end-time', entry.projectName);
         
-        // Create span for total time
+        // Create a container for the total time
+        const totalTimeContainer = document.createElement('div');
+        totalTimeContainer.className = 'total-time-container';
+
+        const totalTimeLabel = document.createElement('span');
+        totalTimeLabel.className = 'total-time-label';
+        totalTimeLabel.textContent = getTranslation('totalTime') + ': ';
+
         const totalTimeSpan = document.createElement('span');
         totalTimeSpan.className = 'total-time';
         totalTimeSpan.textContent = formatDuration(entry.duration);
-        totalTimeSpan.setAttribute('aria-label', `Total time: ${formatDuration(entry.duration)}`);
+        totalTimeSpan.setAttribute('aria-label', `  ${formatDuration(entry.duration)}`);
+
+        totalTimeContainer.appendChild(totalTimeLabel);
+        totalTimeContainer.appendChild(totalTimeSpan);
 
         const descriptionInputContainer = document.createElement('div');
         descriptionInputContainer.className = 'description-input-container';
@@ -1120,8 +1130,7 @@ function renderTimeEntryList(timeEntries) {
         listItem.appendChild(endDateInput);
         listItem.appendChild(endDateDisplay);
         listItem.appendChild(endTimeInput);
-        listItem.appendChild(document.createTextNode(' ' + getTranslation('totalTime') + ': '));
-        listItem.appendChild(totalTimeSpan);
+        listItem.appendChild(totalTimeContainer);
         listItem.appendChild(descriptionInputContainer);
 
         // Add drag and drop event listeners
