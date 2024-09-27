@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Tito 1.08.2
+
+### Issues resolved
+
+- Make dates for time entries adapt to local time zone
+
 ## Tito 1.08.1
 
 ### Features added
