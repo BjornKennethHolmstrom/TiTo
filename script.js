@@ -212,8 +212,7 @@ function initializeDB() {
 function initializeUI() {
     const infoButton = document.querySelector('.info-icon');
     const addProjectButton = document.getElementById('addProjectButton');
-    const playPauseButton = document.getElementById('playPauseButton');
-    const stopButton = document.getElementById('stopButton');
+    const startStopButton = document.getElementById('startStopButton');
     const addManualEntryButton = document.getElementById('addManualEntryButton');
     const clearDatabaseButton = document.getElementById('clearDatabaseButton');
     const newProjectNameInput = document.getElementById('newProjectName');
@@ -245,12 +244,8 @@ function initializeUI() {
         addProjectButton.addEventListener('click', addProject);
     }
 
-    if (playPauseButton) {
-        playPauseButton.addEventListener('click', togglePlayPause);
-    }
-
-    if (stopButton) {
-        stopButton.addEventListener('click', stopTimer);
+    if (startStopButton) {
+        startStopButton.addEventListener('click', toggleStartStop);
     }
 
     if (clearDatabaseButton) {
@@ -1672,13 +1667,11 @@ function updateTimerProjectDisplay() {
     }
 }
 
-function togglePlayPause() {
+function toggleStartStop() {
     if (!isTimerRunning) {
         startTimer();
-    } else if (isPaused) {
-        resumeTimer();
     } else {
-        pauseTimer();
+        stopTimer();
     }
 }
 
@@ -1689,29 +1682,13 @@ function startTimer() {
         return;
     }
     isTimerRunning = true;
-    isPaused = false;
     startTime = Date.now();
     timerProject = currentProject.id;
     log(LogLevel.INFO, `Timer started at: ${new Date(startTime).toISOString()} for project ID: ${timerProject}`);
     timerInterval = setInterval(updateTimeDisplay, 1000);
-    updatePlayPauseButton();
+    updateStartStopButton();
     updateTimerProjectDisplay();
     log(LogLevel.DEBUG, 'After startTimer');
-}
-
-function pauseTimer() {
-    isPaused = true;
-    clearInterval(timerInterval);
-    log(LogLevel.INFO, 'Timer paused at:', new Date());
-    updatePlayPauseButton();
-}
-
-function resumeTimer() {
-    isPaused = false;
-    startTime = Date.now() - elapsedTime;
-    timerInterval = setInterval(updateTimeDisplay, 1000);
-    log(LogLevel.INFO, 'Timer resumed at:', new Date());
-    updatePlayPauseButton();
 }
 
 function stopTimer() {
@@ -1719,7 +1696,6 @@ function stopTimer() {
     if (isTimerRunning) {
         clearInterval(timerInterval);
         isTimerRunning = false;
-        isPaused = false;
 
         let stopTime = Date.now();
 
@@ -1743,11 +1719,18 @@ function stopTimer() {
                                 const timeEntryList = document.getElementById('timeEntryList');
                                 timeEntryList.scrollTop = 0; // Scroll to top
                             });
+                            visualizeProjectData();
+                            resetTimer();
+                        }).catch(error => {
+                            log(LogLevel.ERROR, 'Error saving time entry:', error);
+                            showError('Failed to save time entry when stopping timer');
+                            resetTimer();
                         });
                         log(LogLevel.INFO, 'Time entry saved for project:', project.name);
                     } else {
-                        log(LogLevel.INFO, 'Project was deleted while timer was running. Time entry not saved.');
+                        log(LogLevel.ERROR, 'Project was deleted while timer was running. Time entry not saved.');
                         showError('The project was deleted while the timer was running. Time entry not saved.');
+                        resetTimer();
                     }
                 };
 
@@ -1762,7 +1745,7 @@ function stopTimer() {
                 resetTimer();
             });
         } else {
-            log(LogLevel.INFO, 'No project associated with the timer. Time entry not saved.');
+            log(LogLevel.ERROR, 'No project associated with the timer. Time entry not saved.');
             showError('No project associated with the timer. Time entry not saved.');
             resetTimer();
         }
@@ -1772,14 +1755,23 @@ function stopTimer() {
     log(LogLevel.DEBUG, 'End of stopTimer');
 }
 
-function updatePlayPauseButton() {
-    const playPauseButton = document.getElementById('playPauseButton');
-    if (isTimerRunning && !isPaused) {
-        playPauseButton.textContent = '⏸️';
-        playPauseButton.title = 'Pause';
+function updateStartStopButton() {
+    const startStopButton = document.getElementById('startStopButton');
+    const lightIcon = startStopButton.querySelector('.icon-light');
+    const darkIcon = startStopButton.querySelector('.icon-dark');
+    
+    if (isTimerRunning) {
+        lightIcon.src = 'icons/stop-light.svg';
+        darkIcon.src = 'icons/stop-dark.svg';
+        lightIcon.alt = 'Stop';
+        darkIcon.alt = 'Stop';
+        startStopButton.title = 'Stop';
     } else {
-        playPauseButton.textContent = '▶️';
-        playPauseButton.title = 'Play';
+        lightIcon.src = 'icons/start-light.svg';
+        darkIcon.src = 'icons/start-dark.svg';
+        lightIcon.alt = 'Start';
+        darkIcon.alt = 'Start';
+        startStopButton.title = 'Start';
     }
 }
 
@@ -1797,11 +1789,10 @@ function resetTimer() {
     elapsedTime = 0;
     startTime = null;
     isTimerRunning = false;
-    isPaused = false;
     timerProject = null;
     clearInterval(timerInterval);
     document.getElementById('timeDisplay').textContent = '00:00:00';
-    updatePlayPauseButton();
+    updateStartStopButton();
     updateTimerProjectDisplay();
     log(LogLevel.DEBUG, 'End of resetTimer');
 }
@@ -3108,10 +3099,8 @@ function initializeTabNavigation() {
 }
 
 function initializeTimerKeyboardControl() {
-    const playPauseButton = document.getElementById('playPauseButton');
-    const stopButton = document.getElementById('stopButton');
-    playPauseButton.addEventListener('keydown', handleTimerButtonKeyDown);
-    stopButton.addEventListener('keydown', handleTimerButtonKeyDown);
+    const startStopButton = document.getElementById('startStopButton');
+    startStopButton.addEventListener('keydown', handleTimerButtonKeyDown);
 }
 
 function initializeDateRangeKeyboardControl() {
@@ -3268,9 +3257,9 @@ function openHelpModal() {
 
         <h3 data-i18n="timeTracking">Time Tracking</h3>
         <ul>
-            <li data-i18n="startTimer">To start timing: Select a project and click the play button (▶️).</li>
-            <li data-i18n="pauseResume">To pause/resume: Click the pause button (⏸️) to pause, and the play button (▶️) to resume.</li>
-            <li data-i18n="stopTimer">To stop timing: Click the stop button (⏹️).</li>
+            <li data-i18n="startTimer">To start timing: Select a project and click the play button.</li>
+            <li data-i18n="pauseResume">To pause/resume: Click the pause button to pause, and the play button to resume.</li>
+            <li data-i18n="stopTimer">To stop timing: Click the stop button.</li>
             <li data-i18n="manualEntry">To add a manual entry: Click "Add Manual Entry" and adjust the times as needed.</li>
         </ul>
 

@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## Tito 1.09.0
+
+### Features added
+- Implemented separate button designs for light and dark modes
+- Simplified timer controls by removing the pause functionality
+
+### User Interface Improvements
+- Updated the play/stop button to use SVG icons instead of emojis
+- Enhanced button styling for better visibility and interaction
+- Improved dark mode support for timer controls
+
+### Code Refactoring
+- Streamlined timer-related functions in JavaScript
+- Updated CSS to handle theme-specific button styles
+
 ## Tito 1.08.2
 
 ### Issues resolved

@@ -32,10 +32,12 @@
             </div> 
             <div class="section timer-section" aria-labelledby="timer-heading">
                 <h2 id="timer-heading" data-i18n="timerHeading">Timer</h2>
-                <div class="button-container">
-                    <button id="playPauseButton" aria-label="Play or Pause Timer">▶️</button>
-                    <button id="stopButton" aria-label="Stop Timer">⏹️</button>
-                </div>
+                  <div class="button-container">
+                    <button id="startStopButton" aria-label="Start/Stop timer">
+                      <img src="icons/start-dark.svg" alt="Start" class="icon-dark">
+                      <img src="icons/start-light.svg" alt="Start" class="icon-light">
+                    </button>
+                  </div>
                 <div id="timeDisplay" aria-live="polite" aria-atomic="true">00:00:00</div>
                 <div id="timerProjectDisplay" aria-live="polite" aria-atomic="true"></div>
             </div>
@@ -50,7 +52,7 @@
             <div class="modal-content">
                 <span class="close" role="button" aria-label="Close">&times;</span>
                 <h2 id="modal-title" data-i18n="aboutTiTo">About TiTo</h2>
-                <p data-i18n="version">Version: 1.08.2</p>
+                <p data-i18n="version">Version: 1.09.0</p>
                 <div class="footer-links">
                     <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank" data-i18n="learnMore">Learn more about TiTo</a>
                     <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank" data-i18n="shareFeedback">Share your feedback</a>

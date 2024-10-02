@@ -1,4 +1,4 @@
-# 🕚 TiTo Time Tracker - v 1.08.1
+# 🕚 TiTo Time Tracker - v 1.09.0
 
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
@@ -14,7 +14,7 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
    - Info icon for quick access to app information and links
 
 ### 2. **Core Time Tracking Features**
-   - Start, pause, and stop a timer for active time tracking
+   - Start and stop a timer for active time tracking
    - Add manual time entries
    - View and edit time entries with custom date and time inputs
    - Create and manage multiple projects
@@ -72,14 +72,10 @@ Adding a Project:
 
 Starting Time Tracking:
 - Select a project from the list.
-- Click the play button (▶️) to start the timer.
-
-Pausing and Resuming:
-- Click the pause button (⏸️) to pause the timer.
-- Click the play button (▶️) again to resume.
+- Click the play button to start the timer.
 
 Stopping Time Tracking:
-- Click the stop button (⏹️) to end the time entry.
+- Click the stop button to end the time entry.
 
 Adding Manual Entries:
 - Click "Add Manual Entry" in the Time Entries section.
