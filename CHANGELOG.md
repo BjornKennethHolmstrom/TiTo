@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Tito 1.10.0
+
+### Features added
+- Added overall and individual time goals
+
+### Issues resolved
+- Translated project and time entry deletion alerts
+- Translated export buttons and previous/next buttons on reports
+
 ## Tito 1.09.0
 
 ### Features added

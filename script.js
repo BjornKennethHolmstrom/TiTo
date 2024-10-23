@@ -76,9 +76,18 @@ function checkTranslationsLoaded() {
 }
 
 // Use this function before using translations, for example:
-function getTranslation(key) {
+function getTranslation(key, vars = null) {
     if (!checkTranslationsLoaded()) return key;
-    return translations[currentLanguage][key] || key;
+    let translation = translations[currentLanguage][key] || key;
+    
+    // Replace variables if provided
+    if (vars) {
+        Object.keys(vars).forEach(key => {
+            translation = translation.replace(`{${key}}`, vars[key]);
+        });
+    }
+    
+    return translation;
 }
 
 function addDarkModeToggle() {
@@ -582,7 +591,10 @@ function renderProjectList(projects) {
                 const projectGoal = goals.find(g => g.projectId === project.id);
                 if (projectGoal) {
                     goalInfo.innerHTML = `
-                        <div>${projectGoal.hours} ${getTranslation('hoursGoal')} ${getTranslation(projectGoal.period)}</div>
+                        <div class="goal-header">
+                            ${projectGoal.hours} ${getTranslation('hoursGoal')} ${getTranslation(projectGoal.period)}
+                            <button class="remove-goal-button" onclick="removeGoal(${projectGoal.id}, ${project.id})">×</button>
+                        </div>
                         <div class="goal-progress-bar">
                             <div class="goal-progress-fill" style="width: ${progress}%"></div>
                         </div>
@@ -654,11 +666,18 @@ function renderProjectList(projects) {
             const goal = goals.find(g => g.id === 'overall');
             if (goal) {
                 overallGoal.innerHTML = `
-                    ${getTranslation('overallGoal')}: ${goal.hours} ${getTranslation('hoursGoal')} ${getTranslation(goal.period)}
+                    <div class="goal-header">
+                        ${getTranslation('overallGoal')}: ${goal.hours} ${getTranslation('hoursGoal')} ${getTranslation(goal.period)}
+                        <button class="remove-goal-button" onclick="removeGoal('overall')">×</button>
+                    </div>
                     <div class="goal-progress-bar">
                         <div class="goal-progress-fill" style="width: ${progress}%"></div>
                     </div>
                 `;
+                const existingOverallGoal = projectListElement.parentNode.querySelector('.overall-goal-info');
+                if (existingOverallGoal) {
+                    existingOverallGoal.remove();
+                }
                 projectListElement.parentNode.insertBefore(overallGoal, projectListElement);
             }
         });
@@ -872,7 +891,7 @@ function updateProjectOrder() {
 
 function deleteProject(projectId) {
     log(LogLevel.DEBUG, 'Start of deleteProject');
-    if (confirm('Are you sure you want to delete this project? All associated time entries will also be deleted.')) {
+    if (confirm(getTranslation('confirmDeleteProject'))) {
         dbReady.then(() => {
             let transaction = db.transaction(['projects', 'timeEntries'], 'readwrite');
             let projectStore = transaction.objectStore('projects');
@@ -1568,7 +1587,7 @@ function saveTimeEntry(startTime, endTime) {
                 };
             } else {
                 log(LogLevel.ERROR, 'No project associated with the timer');
-                showError('No project associated with the timer. Time entry not saved.');
+                showError(getTranslation('noProjectForTimer'));
                 reject(new Error('No project associated with the timer'));
             }
         }).catch(error => {
@@ -1582,7 +1601,7 @@ function saveTimeEntry(startTime, endTime) {
 
 
 function removeTimeEntry(id) {
-    if (confirm('Are you sure you want to delete this time entry?')) {
+    if (confirm(getTranslation('confirmDeleteTimeEntry'))) {
         dbReady.then(() => {
             let transaction = db.transaction(['timeEntries'], 'readwrite');
             let store = transaction.objectStore('timeEntries');
@@ -1612,7 +1631,7 @@ function removeTimeEntry(id) {
 
 function addManualEntry() {
     if (!currentProject) {
-        alert('Please select a project first.');
+        alert(getTranslation('selectProjectFirst'));
         return;
     }
 
@@ -2057,7 +2076,13 @@ function showTimeGoalsInterface() {
                         <select id="goalProject" class="goal-project">
                             <option value="" data-i18n="selectProject">Select project...</option>
                         </select>
-                        <input type="number" id="goalHours" class="goal-hours" min="0" step="0.5" placeholder="Hours">
+                        <input type="number" 
+                               id="goalHours" 
+                               class="goal-hours" 
+                               min="0"
+                               step="0.5" 
+                               data-i18n-placeholder="hoursPlaceholder"
+                               placeholder="${getTranslation('hoursPlaceholder')}">
                         <select id="goalPeriod" class="goal-period">
                             <option value="daily" data-i18n="perDay">per day</option>
                             <option value="weekly" data-i18n="perWeek">per week</option>
@@ -2071,7 +2096,12 @@ function showTimeGoalsInterface() {
                 <div class="goals-section">
                     <h3 data-i18n="overallGoal">Overall Time Goal</h3>
                     <div class="goal-inputs">
-                        <input type="number" id="overallGoalHours" class="goal-hours" min="0" step="0.5" placeholder="Hours">
+                        <input type="number" 
+                               id="overallGoalHours" 
+                               class="goal-hours"
+                               min="0"
+                               data-i18n-placeholder="hoursPlaceholder"
+                               placeholder="${getTranslation('hoursPlaceholder')}">
                         <select id="overallGoalPeriod" class="goal-period">
                             <option value="daily" data-i18n="perDay">per day</option>
                             <option value="weekly" data-i18n="perWeek">per week</option>
@@ -2094,6 +2124,9 @@ function showTimeGoalsInterface() {
     }
 
     document.getElementById('timeGoalsInterface').style.display = 'block';
+
+    // Call updateUI to apply translations
+    updateUI();
 }
 
 function hideTimeGoalsInterface() {
@@ -2124,7 +2157,7 @@ function addProjectGoal() {
     const period = document.getElementById('goalPeriod').value;
     
     if (!projectId || !hours) {
-        showError('Please select a project and enter hours');
+        showError(getTranslation('enterProjectAndHours'));
         return;
     }
 
@@ -2135,9 +2168,9 @@ function addProjectGoal() {
     };
 
     saveTimeGoal(goal).then(() => {
-        loadProjects();  // Refresh project list to show updated goals
         document.getElementById('goalHours').value = '';
         document.getElementById('goalProject').value = '';
+        loadProjects();  // Refresh project list to show updated goals
     });
 }
 
@@ -2146,7 +2179,7 @@ function setOverallGoal() {
     const period = document.getElementById('overallGoalPeriod').value;
     
     if (!hours) {
-        showError('Please enter hours');
+        showError(getTranslation('enterHours'));
         return;
     }
 
@@ -2157,8 +2190,11 @@ function setOverallGoal() {
     };
 
     saveTimeGoal(goal).then(() => {
-        loadProjects();  // Refresh project list to show updated goals
         document.getElementById('overallGoalHours').value = '';
+        loadProjects();  // This will refresh the display
+    }).catch(error => {
+        log(LogLevel.ERROR, 'Error setting overall goal:', error);
+        showError(getTranslation('failedToSetOverallGoal'));
     });
 }
 
@@ -2171,6 +2207,9 @@ function updateGoalProjectDropdown() {
         const store = transaction.objectStore('projects');
         store.getAll().onsuccess = function(event) {
             const projects = event.target.result;
+            // Sort projects by their order
+            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+            
             const currentOptions = dropdown.querySelectorAll('option:not(:first-child)');
             currentOptions.forEach(option => option.remove());
             
@@ -3367,7 +3406,11 @@ function addExportButtons() {
 
     formats.forEach(format => {
         const button = document.createElement('button');
-        button.textContent = `Export as ${format.name}`;
+        
+        // Use the translation key for each format, passing the format name to the translation function
+        const translationKey = `export_as_${format.name.toLowerCase()}`;
+        button.textContent = getTranslation(translationKey, { format: format.name });
+        
         button.addEventListener('click', format.func);
         exportButtonsContainer.appendChild(button);
     });
@@ -3865,15 +3908,58 @@ function saveTimeGoal(goal) {
         const store = transaction.objectStore('timeGoals');
         
         return new Promise((resolve, reject) => {
-            const request = store.put(goal);
+            // First, check if a goal already exists
+            if (goal.id === 'overall') {
+                // For overall goal, just put/update it since we use a fixed ID
+                const request = store.put(goal);
+                request.onsuccess = () => resolve(request.result);
+            } else {
+                // For project goals, check if one exists for this project
+                const index = store.index('projectId');
+                const getRequest = index.get(goal.projectId);
+                
+                getRequest.onsuccess = () => {
+                    const existingGoal = getRequest.result;
+                    if (existingGoal) {
+                        // Update existing goal
+                        goal.id = existingGoal.id;
+                    }
+                    const putRequest = store.put(goal);
+                    putRequest.onsuccess = () => resolve(putRequest.result);
+                };
+            }
+        });
+    });
+}
+
+function removeGoal(goalId, projectId = null) {
+    return dbReady.then(() => {
+        const transaction = db.transaction(['timeGoals'], 'readwrite');
+        const store = transaction.objectStore('timeGoals');
+        
+        return new Promise((resolve, reject) => {
+            let request;
+            if (typeof goalId === 'string' && goalId === 'overall') {
+                // For overall goal
+                request = store.delete('overall');
+                // Immediately remove the overall goal from UI
+                const existingOverallGoal = document.querySelector('.overall-goal-info');
+                if (existingOverallGoal) {
+                    existingOverallGoal.remove();
+                }
+            } else {
+                // For project goals
+                request = store.delete(goalId);
+            }
             
             request.onsuccess = () => {
-                log(LogLevel.INFO, 'Time goal saved successfully');
-                resolve(request.result);
+                log(LogLevel.INFO, 'Goal removed successfully');
+                loadProjects(); // Refresh the display
+                resolve();
             };
             
             request.onerror = () => {
-                log(LogLevel.ERROR, 'Error saving time goal:', request.error);
+                log(LogLevel.ERROR, 'Error removing goal:', request.error);
                 reject(request.error);
             };
         });

@@ -1,4 +1,4 @@
-# 🕚 TiTo Time Tracker - v 1.09.0
+# 🕚 TiTo Time Tracker - v 1.10.0
 
 TiTo Time Tracker is a simple, efficient web application for tracking time spent on various projects. It allows users to manage projects, record time entries, and visualize their time allocation.
 
@@ -24,19 +24,23 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
    - Paginated time entries list with customizable entries per page (5, 10, 20, 30, custom, or all)
    - Editable page number for quick navigation through time entries
 
-### 4. **Reporting and Visualization**
+### 4. **Time Goals**
+   - Add daily, weekly or monthly individual project time goals
+   - Set an overall daily, weekly or monthly goal
+
+### 5. **Reporting and Visualization**
    - Charts displaying time spent on different projects:
      - Overall time distribution
      - Time spent in selected date ranges
    - Monthly or weekly reports with export to CSV, PDF, or markdown
    - Date range selection for detailed data analysis
 
-### 5. **Technical and Functional Features**
+### 6. **Technical and Functional Features**
    - Local data storage using IndexedDB
    - Import/Export of database from/into .JSON-file for backup and transfer
    - Offline functionality - works entirely in the browser
 
-### 6. **Technical Stack**
+### 7. **Technical Stack**
    - Built with vanilla JavaScript, HTML, and CSS
 
 ## Getting Started
