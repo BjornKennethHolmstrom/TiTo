@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeDB() {
     dbReady = new Promise((resolve, reject) => {
-        let request = indexedDB.open('TimeTrackerDB', 1);
+        let request = indexedDB.open('TimeTrackerDB', 2); // Version 2 for time goals
 
         request.onerror = function(event) {
             log(LogLevel.ERROR, 'Error opening IndexedDB:', event);
@@ -198,12 +198,24 @@ function initializeDB() {
 
         request.onupgradeneeded = function(event) {
             db = event.target.result;
-            let projectStore = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
-            projectStore.createIndex('name', 'name', { unique: true });
+            
+            // Create stores if they don't exist
+            if (!db.objectStoreNames.contains('projects')) {
+                let projectStore = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+                projectStore.createIndex('name', 'name', { unique: true });
+            }
 
-            let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
-            timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
-            timeEntryStore.createIndex('description', 'description', { unique: false });
+            if (!db.objectStoreNames.contains('timeEntries')) {
+                let timeEntryStore = db.createObjectStore('timeEntries', { keyPath: 'id', autoIncrement: true });
+                timeEntryStore.createIndex('projectId', 'projectId', { unique: false });
+                timeEntryStore.createIndex('description', 'description', { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains('timeGoals')) {
+                let timeGoalsStore = db.createObjectStore('timeGoals', { keyPath: 'id', autoIncrement: true });
+                timeGoalsStore.createIndex('projectId', 'projectId', { unique: false });
+            }
+            
             log(LogLevel.INFO, 'IndexedDB upgrade completed');
         };
     });
@@ -432,6 +444,7 @@ function initializeUI() {
 
     addLanguageSwitcher();
     addDarkModeToggle();
+    addTimeGoalsToggle(); 
 
     // Initialize UI with default language
     updateUI();
@@ -537,6 +550,14 @@ function renderProjectList(projects) {
     projectListElement.innerHTML = '';
     projectListElement.tabIndex = '0';
 
+    const isGoalsEnabled = localStorage.getItem('timeGoalsEnabled') === 'true';
+    
+    if (isGoalsEnabled) {
+        document.body.classList.add('goals-enabled');
+    } else {
+        document.body.classList.remove('goals-enabled');
+    }
+
     projects.forEach((project, index) => {
         const listItem = document.createElement('li');
         listItem.id = `project-${project.id}`;
@@ -549,6 +570,27 @@ function renderProjectList(projects) {
         projectName.contentEditable = true;
         projectName.setAttribute('aria-label', `Edit project name: ${project.name}`);
 
+        // Goal info (only visible when goals are enabled)
+        const goalInfo = document.createElement('div');
+        goalInfo.className = 'project-goal-info';
+        
+        if (isGoalsEnabled) {
+            Promise.all([
+                loadTimeGoals(),
+                calculateGoalProgress(project.id)
+            ]).then(([goals, progress]) => {
+                const projectGoal = goals.find(g => g.projectId === project.id);
+                if (projectGoal) {
+                    goalInfo.innerHTML = `
+                        <div>${projectGoal.hours} ${getTranslation('hoursGoal')} ${getTranslation(projectGoal.period)}</div>
+                        <div class="goal-progress-bar">
+                            <div class="goal-progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
         projectName.addEventListener('dblclick', function(event) {
             event.stopPropagation();
             this.focus();
@@ -557,6 +599,7 @@ function renderProjectList(projects) {
         projectName.addEventListener('blur', function() {
             updateProjectName(project.id, this.textContent.trim());
         });
+
         projectName.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
@@ -575,6 +618,7 @@ function renderProjectList(projects) {
         });
 
         listItem.appendChild(projectName);
+        listItem.appendChild(goalInfo);
         listItem.appendChild(deleteButton);
 
         listItem.setAttribute('tabindex', '0'); // Make the list item focusable
@@ -590,8 +634,6 @@ function renderProjectList(projects) {
             }
         });
 
-        projectListElement.appendChild(listItem);
-
         listItem.addEventListener('dragstart', handleDragStart);
         listItem.addEventListener('dragover', handleDragOver);
         listItem.addEventListener('drop', handleDrop);
@@ -599,6 +641,28 @@ function renderProjectList(projects) {
 
         projectListElement.appendChild(listItem);
     });
+
+    // Add overall goal info if enabled
+    if (isGoalsEnabled) {
+        const overallGoal = document.createElement('div');
+        overallGoal.className = 'overall-goal-info';
+        
+        Promise.all([
+            loadTimeGoals(),
+            calculateOverallGoalProgress()
+        ]).then(([goals, progress]) => {
+            const goal = goals.find(g => g.id === 'overall');
+            if (goal) {
+                overallGoal.innerHTML = `
+                    ${getTranslation('overallGoal')}: ${goal.hours} ${getTranslation('hoursGoal')} ${getTranslation(goal.period)}
+                    <div class="goal-progress-bar">
+                        <div class="goal-progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                `;
+                projectListElement.parentNode.insertBefore(overallGoal, projectListElement);
+            }
+        });
+    }
 
     if (currentProject) {
         const currentProjectItem = projectListElement.querySelector(`[data-project-id="${currentProject.id}"]`);
@@ -1849,6 +1913,324 @@ function handleDragEnd(e) {
     document.querySelectorAll('#projectList li').forEach(function (item) {
         item.classList.remove('over');
     });
+}
+
+/* Time goals */
+
+function calculateGoalProgress(projectId) {
+    return dbReady.then(() => {
+        const transaction = db.transaction(['timeGoals', 'timeEntries'], 'readonly');
+        const goalStore = transaction.objectStore('timeGoals');
+        const entryStore = transaction.objectStore('timeEntries');
+        
+        return Promise.all([
+            // Get the goal for this project
+            new Promise((resolve) => {
+                const request = goalStore.index('projectId').get(projectId);
+                request.onsuccess = () => resolve(request.result);
+            }),
+            // Get time entries for this project
+            new Promise((resolve) => {
+                const request = entryStore.index('projectId').getAll(projectId);
+                request.onsuccess = () => resolve(request.result);
+            })
+        ]).then(([goal, entries]) => {
+            if (!goal || !entries.length) return 0;
+
+            const totalTime = calculateTimeForPeriod(entries, goal.period);
+            const targetHours = goal.hours * 3600000; // Convert hours to milliseconds
+            return Math.min((totalTime / targetHours) * 100, 100);
+        });
+    });
+}
+
+function calculateOverallGoalProgress() {
+    return dbReady.then(() => {
+        const transaction = db.transaction(['timeGoals', 'timeEntries'], 'readonly');
+        const goalStore = transaction.objectStore('timeGoals');
+        const entryStore = transaction.objectStore('timeEntries');
+        
+        return Promise.all([
+            // Get the overall goal
+            new Promise((resolve) => {
+                const request = goalStore.get('overall');
+                request.onsuccess = () => resolve(request.result);
+            }),
+            // Get all time entries
+            new Promise((resolve) => {
+                const request = entryStore.getAll();
+                request.onsuccess = () => resolve(request.result);
+            })
+        ]).then(([goal, entries]) => {
+            if (!goal || !entries.length) return 0;
+
+            const totalTime = calculateTimeForPeriod(entries, goal.period);
+            const targetHours = goal.hours * 3600000; // Convert hours to milliseconds
+            return Math.min((totalTime / targetHours) * 100, 100);
+        });
+    });
+}
+
+function calculateTimeForPeriod(entries, period) {
+    const now = new Date();
+    let startDate;
+
+    // Determine the start date based on the period
+    switch (period) {
+        case 'daily':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+        case 'weekly':
+            // Start from last Sunday
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - now.getDay());
+            startDate.setHours(0, 0, 0, 0);
+            break;
+        case 'monthly':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        default:
+            startDate = new Date(0); // Beginning of time
+    }
+
+    // Filter and sum entries within the period
+    return entries
+        .filter(entry => {
+            const entryDate = new Date(entry.start);
+            return entryDate >= startDate && entryDate <= now;
+        })
+        .reduce((total, entry) => total + entry.duration, 0);
+}
+
+function addTimeGoalsToggle() {
+    const settingsContainer = document.querySelector('.settings-container');
+    if (!settingsContainer) {
+        log(LogLevel.ERROR, 'Settings container not found');
+        return;
+    }
+
+    const toggleHtml = `
+        <div class="time-goals-container">
+            <span class="time-goals-label" data-i18n="timeGoals">Time Goals</span>
+            <label class="switch">
+                <input type="checkbox" id="timeGoalsToggle">
+                <span class="slider round"></span>
+            </label>
+        </div>
+    `;
+
+    settingsContainer.insertAdjacentHTML('beforeend', toggleHtml);
+
+    const timeGoalsToggle = document.getElementById('timeGoalsToggle');
+    if (timeGoalsToggle) {
+        // Check if time goals were previously enabled
+        const isGoalsEnabled = localStorage.getItem('timeGoalsEnabled') === 'true';
+        timeGoalsToggle.checked = isGoalsEnabled;
+        
+        timeGoalsToggle.addEventListener('change', function() {
+            localStorage.setItem('timeGoalsEnabled', this.checked);
+            if (this.checked) {
+                showTimeGoalsInterface();
+            } else {
+                hideTimeGoalsInterface();
+            }
+        });
+
+        // Initialize on page load if enabled
+        if (isGoalsEnabled) {
+            showTimeGoalsInterface();
+        }
+    }
+}
+
+function showTimeGoalsInterface() {
+    const projectSection = document.querySelector('.project-section');
+    if (!projectSection) return;
+
+    // Create goals interface if it doesn't exist
+    if (!document.getElementById('timeGoalsInterface')) {
+        const goalsHtml = `
+            <div id="timeGoalsInterface" class="time-goals-interface">
+                <div class="goals-section">
+                    <h3 data-i18n="projectGoals">Project Goals</h3>
+                    <div class="goal-inputs">
+                        <select id="goalProject" class="goal-project">
+                            <option value="" data-i18n="selectProject">Select project...</option>
+                        </select>
+                        <input type="number" id="goalHours" class="goal-hours" min="0" step="0.5" placeholder="Hours">
+                        <select id="goalPeriod" class="goal-period">
+                            <option value="daily" data-i18n="perDay">per day</option>
+                            <option value="weekly" data-i18n="perWeek">per week</option>
+                            <option value="monthly" data-i18n="perMonth">per month</option>
+                        </select>
+                        <button id="addProjectGoal" class="add-goal-button" data-i18n="add">Add</button>
+                    </div>
+                    <div id="projectGoalsList" class="goals-list"></div>
+                </div>
+                
+                <div class="goals-section">
+                    <h3 data-i18n="overallGoal">Overall Time Goal</h3>
+                    <div class="goal-inputs">
+                        <input type="number" id="overallGoalHours" class="goal-hours" min="0" step="0.5" placeholder="Hours">
+                        <select id="overallGoalPeriod" class="goal-period">
+                            <option value="daily" data-i18n="perDay">per day</option>
+                            <option value="weekly" data-i18n="perWeek">per week</option>
+                            <option value="monthly" data-i18n="perMonth">per month</option>
+                        </select>
+                        <button id="setOverallGoal" class="add-goal-button" data-i18n="set">Set</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        projectSection.insertAdjacentHTML('afterend', goalsHtml);
+        
+        // Initialize event listeners
+        initializeGoalsInterface();
+        // Update project dropdown
+        updateGoalProjectDropdown();
+        // Load existing goals
+        loadTimeGoals();
+    }
+
+    document.getElementById('timeGoalsInterface').style.display = 'block';
+}
+
+function hideTimeGoalsInterface() {
+    const goalsInterface = document.getElementById('timeGoalsInterface');
+    if (goalsInterface) {
+        goalsInterface.style.display = 'none';
+    }
+}
+
+function initializeGoalsInterface() {
+    document.getElementById('addProjectGoal').addEventListener('click', addProjectGoal);
+    document.getElementById('setOverallGoal').addEventListener('click', setOverallGoal);
+    
+    // Update goals when time entries are saved
+    const originalSaveTimeEntry = saveTimeEntry;
+    saveTimeEntry = function(startTime, endTime) {
+        return originalSaveTimeEntry(startTime, endTime).then(() => {
+            if (localStorage.getItem('timeGoalsEnabled') === 'true') {
+                checkGoals();
+            }
+        });
+    };
+}
+
+function addProjectGoal() {
+    const projectId = document.getElementById('goalProject').value;
+    const hours = document.getElementById('goalHours').value;
+    const period = document.getElementById('goalPeriod').value;
+    
+    if (!projectId || !hours) {
+        showError('Please select a project and enter hours');
+        return;
+    }
+
+    const goal = {
+        projectId: parseInt(projectId),
+        hours: parseFloat(hours),
+        period: period
+    };
+
+    saveTimeGoal(goal).then(() => {
+        loadProjects();  // Refresh project list to show updated goals
+        document.getElementById('goalHours').value = '';
+        document.getElementById('goalProject').value = '';
+    });
+}
+
+function setOverallGoal() {
+    const hours = document.getElementById('overallGoalHours').value;
+    const period = document.getElementById('overallGoalPeriod').value;
+    
+    if (!hours) {
+        showError('Please enter hours');
+        return;
+    }
+
+    const goal = {
+        id: 'overall',  // Special ID for overall goal
+        hours: parseFloat(hours),
+        period: period
+    };
+
+    saveTimeGoal(goal).then(() => {
+        loadProjects();  // Refresh project list to show updated goals
+        document.getElementById('overallGoalHours').value = '';
+    });
+}
+
+function updateGoalProjectDropdown() {
+    const dropdown = document.getElementById('goalProject');
+    if (!dropdown) return;
+
+    dbReady.then(() => {
+        const transaction = db.transaction(['projects'], 'readonly');
+        const store = transaction.objectStore('projects');
+        store.getAll().onsuccess = function(event) {
+            const projects = event.target.result;
+            const currentOptions = dropdown.querySelectorAll('option:not(:first-child)');
+            currentOptions.forEach(option => option.remove());
+            
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                dropdown.appendChild(option);
+            });
+        };
+    });
+}
+
+function checkGoals() {
+    if (localStorage.getItem('timeGoalsEnabled') !== 'true') return;
+
+    dbReady.then(() => {
+        const transaction = db.transaction(['timeEntries', 'timeGoals'], 'readonly');
+        const timeEntryStore = transaction.objectStore('timeEntries');
+        const timeGoalsStore = transaction.objectStore('timeGoals');
+
+        Promise.all([
+            new Promise(resolve => {
+                timeEntryStore.getAll().onsuccess = (event) => resolve(event.target.result);
+            }),
+            new Promise(resolve => {
+                timeGoalsStore.getAll().onsuccess = (event) => resolve(event.target.result);
+            })
+        ]).then(([entries, goals]) => {
+            goals.forEach(goal => {
+                const progress = calculateGoalProgress(entries, goal);
+                if (progress >= 90 && progress < 100) {
+                    showGoalAlert(`Almost reached ${goal.projectId ? 'project' : 'overall'} goal (${progress.toFixed(1)}%)`);
+                } else if (progress >= 100) {
+                    showGoalAlert(`${goal.projectId ? 'Project' : 'Overall'} goal achieved! (${progress.toFixed(1)}%)`);
+                }
+            });
+        });
+    });
+}
+
+function showGoalAlert(message) {
+    const alertContainer = document.createElement('div');
+    alertContainer.className = 'goal-alert';
+    alertContainer.innerHTML = `
+        <div class="goal-alert-content">
+            ${message}
+            <button class="goal-alert-close">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(alertContainer);
+    
+    alertContainer.querySelector('.goal-alert-close').addEventListener('click', () => {
+        alertContainer.remove();
+    });
+
+    setTimeout(() => {
+        alertContainer.remove();
+    }, 5000);
 }
 
 /* Chart and report tabs */
@@ -3347,6 +3729,13 @@ function importDatabase(event) {
         return;
     }
 
+    const confirmImport = confirm(getTranslation('importWarning') || 'Warning: Importing a database will overwrite your current data. Make sure you have exported your existing data if you want to keep it. Do you want to proceed with the import?');
+    
+    if (!confirmImport) {
+        event.target.value = ''; // Reset the file input
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -3447,6 +3836,48 @@ function clearDatabase() {
             showError('Error opening database for clearing');
         });
     }
+}
+
+function loadTimeGoals() {
+    return dbReady.then(() => {
+        const transaction = db.transaction(['timeGoals'], 'readonly');
+        const store = transaction.objectStore('timeGoals');
+        
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                const goals = request.result;
+                resolve(goals);
+            };
+            
+            request.onerror = () => {
+                log(LogLevel.ERROR, 'Error loading time goals:', request.error);
+                reject(request.error);
+            };
+        });
+    });
+}
+
+function saveTimeGoal(goal) {
+    return dbReady.then(() => {
+        const transaction = db.transaction(['timeGoals'], 'readwrite');
+        const store = transaction.objectStore('timeGoals');
+        
+        return new Promise((resolve, reject) => {
+            const request = store.put(goal);
+            
+            request.onsuccess = () => {
+                log(LogLevel.INFO, 'Time goal saved successfully');
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                log(LogLevel.ERROR, 'Error saving time goal:', request.error);
+                reject(request.error);
+            };
+        });
+    });
 }
 
 /* Utility functions */
