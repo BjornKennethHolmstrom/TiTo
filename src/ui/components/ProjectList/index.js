@@ -1,222 +1,257 @@
 // src/ui/components/ProjectList/index.js
-import { createElement as h } from 'react';
-import { useState, useEffect, useRef } from 'react';
-import { Trash2, Edit2, MoreVertical, Plus } from 'lucide-react';
+class ProjectList {
+    constructor(projectManager, stateManager, translationManager, container) {
+        // Validate dependencies
+        if (!projectManager) throw new Error('Project Manager is required');
+        if (!stateManager) throw new Error('State Manager is required');
+        if (!translationManager) throw new Error('Translation Manager is required');
 
-export const ProjectList = ({ 
-    projectsFeature, 
-    stateManager, 
-    translationManager,
-    className = '' 
-}) => {
-    const [draggedItem, setDraggedItem] = useState(null);
-    const [editingId, setEditingId] = useState(null);
-    const [newProjectName, setNewProjectName] = useState('');
-    const editInputRef = useRef(null);
+        // Store references
+        this.projectManager = projectManager;
+        this.state = stateManager;
+        this.translator = translationManager;
+        this.container = container;
 
-    // State subscriptions
-    const [projects, setProjects] = useState([]);
-    const [currentProjectId, setCurrentProjectId] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+        // Initialize the component
+        this.initialize();
+    }
 
-    useEffect(() => {
-        // Subscribe to state changes
-        const unsubscribers = [
-            stateManager.subscribe('projects.items', setProjects),
-            stateManager.subscribe('projects.currentProjectId', setCurrentProjectId),
-            stateManager.subscribe('projects.loading', setLoading),
-            stateManager.subscribe('projects.error', setError)
-        ];
-
-        // Cleanup subscriptions
-        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-    }, [stateManager]);
-
-    // Handle new project creation
-    const handleAddProject = async (e) => {
-        e.preventDefault();
-        if (!newProjectName.trim()) {
-            return;
-        }
-
+    initialize() {
         try {
-            await projectsFeature.addProject(newProjectName);
-            setNewProjectName('');
+            // Create component structure
+            this.container.innerHTML = this.createTemplate();
+            
+            // Cache element references
+            this.cacheElements();
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            // Subscribe to state changes
+            this.subscribeToStateChanges();
+
+            // Load initial data
+            this.loadProjects();
+
         } catch (error) {
-            console.error('Error adding project:', error);
+            console.error('Error initializing ProjectList:', error);
+            throw error;
         }
-    };
+    }
 
-    // Handle project selection
-    const handleProjectClick = (projectId) => {
-        if (editingId === projectId) {
-            return;
-        }
-        projectsFeature.setCurrentProject(projectId);
-    };
+    createTemplate() {
+        return `
+            <div class="projects-section">
+                <h2 class="section-heading" data-i18n="projects">Projects</h2>
+                
+                <form class="add-project-form">
+                    <input 
+                        type="text" 
+                        id="newProjectName" 
+                        class="project-input"
+                        data-i18n-placeholder="enterProjectName"
+                        aria-label="${this.translator.translate('enterProjectName')}"
+                    >
+                    <button 
+                        type="submit" 
+                        class="add-button"
+                        data-i18n="addProject"
+                    >Add Project</button>
+                </form>
 
-    // Handle project editing
-    const startEditing = (projectId, initialName) => {
-        setEditingId(projectId);
-        setNewProjectName(initialName);
-        // Focus the input after render
-        setTimeout(() => editInputRef.current?.focus(), 0);
-    };
+                <div class="error-message hidden"></div>
 
-    const handleEditSubmit = async (projectId) => {
-        if (!newProjectName.trim()) {
-            return;
-        }
+                <ul id="projectList" class="project-list" role="list"></ul>
+            </div>
+        `;
+    }
 
-        try {
-            await projectsFeature.updateProject(projectId, { name: newProjectName });
-            setEditingId(null);
-            setNewProjectName('');
-        } catch (error) {
-            console.error('Error updating project:', error);
-        }
-    };
+    cacheElements() {
+        this.elements = {
+            projectList: this.container.querySelector('#projectList'),
+            addForm: this.container.querySelector('.add-project-form'),
+            nameInput: this.container.querySelector('#newProjectName'),
+            errorMessage: this.container.querySelector('.error-message')
+        };
+    }
 
-    // Handle project deletion
-    const handleDeleteProject = async (projectId, e) => {
-        e.stopPropagation();
-        try {
-            await projectsFeature.deleteProject(projectId);
-        } catch (error) {
-            console.error('Error deleting project:', error);
-        }
-    };
-
-    // Drag and drop handlers
-    const handleDragStart = (e, index) => {
-        setDraggedItem(index);
-        e.dataTransfer.effectAllowed = 'move';
-        e.target.classList.add('opacity-50');
-    };
-
-    const handleDragOver = (e, index) => {
-        e.preventDefault();
-        if (draggedItem === null) return;
-
-        const items = [...projects];
-        const draggedProject = items[draggedItem];
-        items.splice(draggedItem, 1);
-        items.splice(index, 0, draggedProject);
-
-        projectsFeature.reorderProjects(draggedItem, index);
-        setDraggedItem(index);
-    };
-
-    const handleDragEnd = (e) => {
-        e.target.classList.remove('opacity-50');
-        setDraggedItem(null);
-    };
-
-    return h('div', { className: `flex flex-col h-full ${className}` }, [
+    setupEventListeners() {
         // Add project form
-        h('form', { 
-            className: 'flex gap-2 mb-4 p-2',
-            onSubmit: handleAddProject 
-        }, [
-            h('input', {
-                type: 'text',
-                value: newProjectName,
-                onChange: (e) => setNewProjectName(e.target.value),
-                placeholder: translationManager.translate('enterProjectName'),
-                className: 'flex-1 px-3 py-2 border rounded-lg bg-background text-foreground'
-            }),
-            h('button', {
-                type: 'submit',
-                disabled: loading,
-                className: 'p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50'
-            }, [
-                h(Plus, { size: 20 })
-            ])
-        ]),
+        this.elements.addForm.addEventListener('submit', (e) => this.handleAddProject(e));
 
-        // Project list
-        h('div', { 
-            className: 'flex-1 overflow-y-auto min-h-0',
-            'aria-label': translationManager.translate('projectsList')
-        }, [
-            loading ? h('div', { 
-                className: 'flex items-center justify-center h-full' 
-            }, translationManager.translate('loading')) :
-            
-            error ? h('div', { 
-                className: 'text-destructive p-4 text-center' 
-            }, error) :
-            
-            projects.length === 0 ? h('div', { 
-                className: 'text-muted-foreground p-4 text-center' 
-            }, translationManager.translate('noProjects')) :
-            
-            h('ul', { className: 'space-y-2 p-2' }, projects.map((project, index) => 
-                h('li', {
-                    key: project.id,
-                    draggable: true,
-                    onDragStart: (e) => handleDragStart(e, index),
-                    onDragOver: (e) => handleDragOver(e, index),
-                    onDragEnd: handleDragEnd,
-                    onClick: () => handleProjectClick(project.id),
-                    className: `
-                        relative group flex items-center gap-2 p-3 
-                        rounded-lg cursor-pointer select-none
-                        ${currentProjectId === project.id ? 'bg-primary/10' : 'hover:bg-muted'}
-                        ${draggedItem === index ? 'opacity-50' : ''}
-                    `
-                }, [
-                    h(MoreVertical, { 
-                        size: 16,
-                        className: 'text-muted-foreground cursor-grab'
-                    }),
+        // Project list drag and drop
+        this.elements.projectList.addEventListener('dragstart', this.handleDragStart.bind(this));
+        this.elements.projectList.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.elements.projectList.addEventListener('drop', this.handleDrop.bind(this));
+        this.elements.projectList.addEventListener('dragend', this.handleDragEnd.bind(this));
+    }
 
-                    editingId === project.id ?
-                        h('input', {
-                            ref: editInputRef,
-                            type: 'text',
-                            value: newProjectName,
-                            onChange: (e) => setNewProjectName(e.target.value),
-                            onBlur: () => handleEditSubmit(project.id),
-                            onKeyDown: (e) => {
-                                if (e.key === 'Enter') handleEditSubmit(project.id);
-                                if (e.key === 'Escape') setEditingId(null);
-                            },
-                            className: 'flex-1 bg-background px-2 py-1 rounded border'
-                        }) :
-                        h('span', { 
-                            className: 'flex-1 truncate',
-                            title: project.name
-                        }, project.name),
+    subscribeToStateChanges() {
+        // Subscribe to project-related state changes
+        this.state.subscribe('projects.items', projects => this.renderProjects(projects));
+        this.state.subscribe('projects.currentProjectId', id => this.updateCurrentProject(id));
+        this.state.subscribe('projects.error', error => this.showError(error));
+    }
 
-                    h('div', { 
-                        className: `
-                            absolute right-2 flex gap-1
-                            opacity-0 group-hover:opacity-100
-                            transition-opacity duration-200
-                        `
-                    }, [
-                        h('button', {
-                            onClick: (e) => {
-                                e.stopPropagation();
-                                startEditing(project.id, project.name);
-                            },
-                            className: 'p-1 hover:bg-muted rounded',
-                            'aria-label': translationManager.translate('editProject')
-                        }, [
-                            h(Edit2, { size: 16 })
-                        ]),
-                        h('button', {
-                            onClick: (e) => handleDeleteProject(project.id, e),
-                            className: 'p-1 hover:bg-destructive/10 text-destructive rounded',
-                            'aria-label': translationManager.translate('deleteProject')
-                        }, [
-                            h(Trash2, { size: 16 })
-                        ])
-                    ])
-                ])
-            ))
-        ])
-    ]);
-};
+    async loadProjects() {
+        try {
+            await this.projectManager.getAllProjects();
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    async handleAddProject(e) {
+        e.preventDefault();
+        const name = this.elements.nameInput.value.trim();
+
+        try {
+            await this.projectManager.addProject(name);
+            this.elements.nameInput.value = '';
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    renderProjects(projects) {
+        this.elements.projectList.innerHTML = '';
+
+        projects.forEach(project => {
+            const li = document.createElement('li');
+            li.className = 'project-item';
+            li.dataset.projectId = project.id;
+            li.draggable = true;
+
+            li.innerHTML = `
+                <div class="project-content">
+                    <span class="project-name" contenteditable="true">${project.name}</span>
+                    <div class="project-actions">
+                        <button class="delete-button" 
+                                aria-label="${this.translator.translate('deleteProject', { name: project.name })}">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="project-goal-info hidden"></div>
+            `;
+
+            this.attachProjectItemListeners(li, project);
+            this.elements.projectList.appendChild(li);
+        });
+    }
+
+    attachProjectItemListeners(li, project) {
+        const nameElement = li.querySelector('.project-name');
+        const deleteButton = li.querySelector('.delete-button');
+
+        // Project selection
+        li.addEventListener('click', (e) => {
+            if (e.target !== nameElement && e.target !== deleteButton) {
+                this.projectManager.setCurrentProject(project.id);
+            }
+        });
+
+        // Project name editing
+        nameElement.addEventListener('blur', () => {
+            const newName = nameElement.textContent.trim();
+            if (newName !== project.name) {
+                this.projectManager.updateProject(project.id, { name: newName })
+                    .catch(() => nameElement.textContent = project.name);
+            }
+        });
+
+        nameElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                nameElement.blur();
+            }
+        });
+
+        // Project deletion
+        deleteButton.addEventListener('click', async () => {
+            if (confirm(this.translator.translate('confirmDeleteProject'))) {
+                try {
+                    await this.projectManager.deleteProject(project.id);
+                } catch (error) {
+                    this.showError(error.message);
+                }
+            }
+        });
+    }
+
+    updateCurrentProject(projectId) {
+        const items = this.elements.projectList.querySelectorAll('.project-item');
+        items.forEach(item => {
+            item.classList.toggle('selected', item.dataset.projectId === String(projectId));
+            item.setAttribute('aria-selected', item.dataset.projectId === String(projectId));
+        });
+    }
+
+    // Drag and Drop handlers
+    handleDragStart(e) {
+        const item = e.target.closest('.project-item');
+        if (!item) return;
+
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.projectId);
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        const item = e.target.closest('.project-item');
+        if (item && !item.classList.contains('dragging')) {
+            item.classList.add('over');
+        }
+    }
+
+    async handleDrop(e) {
+        e.preventDefault();
+        
+        const draggedId = parseInt(e.dataTransfer.getData('text/plain'));
+        const dropTarget = e.target.closest('.project-item');
+        
+        if (!dropTarget || dropTarget.dataset.projectId === String(draggedId)) return;
+
+        const items = Array.from(this.elements.projectList.children);
+        const fromIndex = items.findIndex(item => item.dataset.projectId === String(draggedId));
+        const toIndex = items.indexOf(dropTarget);
+
+        try {
+            await this.projectManager.updateProjectOrder(fromIndex, toIndex);
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    handleDragEnd(e) {
+        const items = this.elements.projectList.querySelectorAll('.project-item');
+        items.forEach(item => {
+            item.classList.remove('dragging', 'over');
+        });
+    }
+
+    showError(message) {
+        this.elements.errorMessage.textContent = message;
+        this.elements.errorMessage.classList.remove('hidden');
+        
+        setTimeout(() => {
+            this.elements.errorMessage.classList.add('hidden');
+        }, 5000);
+    }
+
+    updateTranslations() {
+        this.container.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = this.translator.translate(key);
+        });
+
+        this.elements.nameInput.placeholder = this.translator.translate('enterProjectName');
+    }
+
+    destroy() {
+        // Clean up event listeners and state subscriptions
+        this.elements.addForm.removeEventListener('submit', this.handleAddProject);
+        // Add other cleanup as needed
+    }
+}

@@ -1,365 +1,505 @@
-// src/ui/components/Reports/index.js
-import { createElement as h } from 'react';
-import { useState, useEffect } from 'react';
-import { 
-    Calendar,
-    Download,
-    FileText,
-    Table,
-    File,
-    CheckSquare,
-    Square,
-    AlertCircle,
-    Loader
-} from 'lucide-react';
+// ui/components/Reports/index.js
+class Reports {
+    constructor(reportsFeature, stateManager, translationManager, container) {
+        this.reportsFeature = reportsFeature;
+        this.state = stateManager;
+        this.translator = translationManager;
+        this.container = container;
+        
+        this.elements = {
+            reportType: null,
+            startDate: null,
+            endDate: null,
+            projectSelection: null,
+            columnSelection: null,
+            generateButton: null,
+            exportButtons: null,
+            reportContent: null,
+            errorMessage: null
+        };
 
-export const Reports = ({
-    reportsFeature,
-    stateManager,
-    translationManager,
-    className = ''
-}) => {
-    // Local state for form controls
-    const [reportType, setReportType] = useState('weekly');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [selectedColumns, setSelectedColumns] = useState([
-        'period',
-        'project',
-        'description',
-        'timeSpent',
-        'totalTime'
-    ]);
+        this.initialize();
+        this.setupCharts();
+    }
 
-    // State subscriptions
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [currentReport, setCurrentReport] = useState(null);
-    const [projects, setProjects] = useState([]);
-    const [selectedProjects, setSelectedProjects] = useState(new Set());
+    initialize() {
+        this.container.innerHTML = `
+            <div class="reports-section">
+                <div class="section-header">
+                    <h2 class="section-heading" data-i18n="reports">Reports</h2>
+                </div>
 
-    useEffect(() => {
-        const unsubscribers = [
-            stateManager.subscribe('reports.loading', setLoading),
-            stateManager.subscribe('reports.error', setError),
-            stateManager.subscribe('reports.currentReport', setCurrentReport),
-            stateManager.subscribe('projects.items', setProjects)
+                <div class="report-controls">
+                    <div class="control-group">
+                        <label for="reportType" data-i18n="reportType">Report Type:</label>
+                        <select id="reportType" class="report-select">
+                            <option value="weekly" data-i18n="weeklySummary">Weekly Summary</option>
+                            <option value="monthly" data-i18n="monthlySummary">Monthly Summary</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="startDate" data-i18n="startDate">Start Date:</label>
+                        <input type="date" id="startDate" class="date-input">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="endDate" data-i18n="endDate">End Date:</label>
+                        <input type="date" id="endDate" class="date-input">
+                    </div>
+                </div>
+
+                <div class="project-selection">
+                    <div class="selection-header">
+                        <h3 data-i18n="selectProjects">Select Projects</h3>
+                        <div class="selection-controls">
+                            <button type="button" class="select-all-button" data-i18n="selectAll">
+                                Select All
+                            </button>
+                            <button type="button" class="deselect-all-button" data-i18n="deselectAll">
+                                Deselect All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="project-checkboxes"></div>
+                </div>
+
+                <div class="column-selection">
+                    <h3 data-i18n="selectColumns">Select Columns</h3>
+                    <div class="column-checkboxes">
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="period" checked>
+                            <span data-i18n="period">Period</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="project" checked>
+                            <span data-i18n="project">Project</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="description" checked>
+                            <span data-i18n="description">Description</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="timeSpent" checked>
+                            <span data-i18n="timeSpent">Time Spent</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="totalTime" checked>
+                            <span data-i18n="totalTime">Total Time</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="report-actions">
+                    <button type="button" class="generate-button" data-i18n="generateReport">
+                        Generate Report
+                    </button>
+                </div>
+
+                <div class="error-message hidden"></div>
+
+                <div class="report-content hidden">
+                    <div class="export-buttons">
+                        <button type="button" class="export-button" data-format="csv">
+                            <span data-i18n="export_as_csv">Export as CSV</span>
+                        </button>
+                        <button type="button" class="export-button" data-format="pdf">
+                            <span data-i18n="export_as_pdf">Export as PDF</span>
+                        </button>
+                        <button type="button" class="export-button" data-format="markdown">
+                            <span data-i18n="export_as_markdown">Export as Markdown</span>
+                        </button>
+                    </div>
+
+                    <div class="charts-container">
+                        <canvas id="timeDistributionChart"></canvas>
+                        <canvas id="projectComparisonChart"></canvas>
+                    </div>
+
+                    <div class="report-table-container">
+                        <table class="report-table">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.cacheElements();
+        this.setupEventListeners();
+        this.setDefaultDates();
+        this.loadProjects();
+    }
+
+    cacheElements() {
+        this.elements = {
+            reportType: this.container.querySelector('#reportType'),
+            startDate: this.container.querySelector('#startDate'),
+            endDate: this.container.querySelector('#endDate'),
+            projectSelection: this.container.querySelector('.project-checkboxes'),
+            columnSelection: this.container.querySelector('.column-checkboxes'),
+            generateButton: this.container.querySelector('.generate-button'),
+            exportButtons: this.container.querySelector('.export-buttons'),
+            reportContent: this.container.querySelector('.report-content'),
+            errorMessage: this.container.querySelector('.error-message'),
+            selectAllButton: this.container.querySelector('.select-all-button'),
+            deselectAllButton: this.container.querySelector('.deselect-all-button'),
+            timeDistributionChart: this.container.querySelector('#timeDistributionChart'),
+            projectComparisonChart: this.container.querySelector('#projectComparisonChart')
+        };
+    }
+
+    setupEventListeners() {
+        this.elements.generateButton.addEventListener('click', () => this.generateReport());
+        
+        this.elements.exportButtons.addEventListener('click', (e) => {
+            const button = e.target.closest('.export-button');
+            if (button) {
+                const format = button.dataset.format;
+                this.exportReport(format);
+            }
+        });
+
+        this.elements.selectAllButton.addEventListener('click', () => this.selectAllProjects());
+        this.elements.deselectAllButton.addEventListener('click', () => this.deselectAllProjects());
+
+        // Project selection drag select
+        let isSelecting = false;
+        let initialState = false;
+
+        this.elements.projectSelection.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.checkbox-label')) {
+                isSelecting = true;
+                initialState = !e.target.closest('.checkbox-label').querySelector('input').checked;
+            }
+        });
+
+        this.elements.projectSelection.addEventListener('mouseover', (e) => {
+            if (isSelecting) {
+                const checkbox = e.target.closest('.checkbox-label')?.querySelector('input');
+                if (checkbox) {
+                    checkbox.checked = initialState;
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isSelecting = false;
+        });
+    }
+
+    setupCharts() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not loaded - charts will be disabled');
+            return;
+        }
+        try {
+
+            // Initialize Chart.js charts
+            this.charts = {
+                timeDistribution: new Chart(this.elements.timeDistributionChart, {
+                    type: 'pie',
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                }),
+                projectComparison: new Chart(this.elements.projectComparisonChart, {
+                    type: 'bar',
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: this.translator.translate('hours')
+                                }
+                            }
+                        }
+                    }
+                })
+            };
+        } catch (error) {
+            console.error('Error setting up charts:', error);
+            this.charts = {};
+        }
+    }
+
+    async loadProjects() {
+        try {
+            const projects = await this.reportsFeature.getProjects();
+            this.renderProjectCheckboxes(projects);
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    renderProjectCheckboxes(projects) {
+        this.elements.projectSelection.innerHTML = projects.map(project => `
+            <label class="checkbox-label">
+                <input type="checkbox" value="${project.id}">
+                <span>${project.name}</span>
+            </label>
+        `).join('');
+    }
+
+    selectAllProjects() {
+        this.elements.projectSelection.querySelectorAll('input[type="checkbox"]')
+            .forEach(checkbox => checkbox.checked = true);
+    }
+
+    deselectAllProjects() {
+        this.elements.projectSelection.querySelectorAll('input[type="checkbox"]')
+            .forEach(checkbox => checkbox.checked = false);
+    }
+
+    getSelectedProjects() {
+        return Array.from(this.elements.projectSelection.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(checkbox => parseInt(checkbox.value));
+    }
+
+    getSelectedColumns() {
+        return Array.from(this.elements.columnSelection.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(checkbox => checkbox.value);
+    }
+
+    setDefaultDates() {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        this.elements.startDate.value = this.formatDate(firstDayOfMonth);
+        this.elements.endDate.value = this.formatDate(today);
+    }
+
+    async generateReport() {
+        try {
+            const selectedProjects = this.getSelectedProjects();
+            if (selectedProjects.length === 0) {
+                throw new Error(this.translator.translate('selectAtLeastOneProject'));
+            }
+
+            const report = await this.reportsFeature.generateReport({
+                type: this.elements.reportType.value,
+                startDate: new Date(this.elements.startDate.value),
+                endDate: new Date(this.elements.endDate.value),
+                projects: selectedProjects,
+                columns: this.getSelectedColumns()
+            });
+
+            this.renderReport(report);
+            this.updateCharts(report);
+            this.elements.reportContent.classList.remove('hidden');
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    renderReport(report) {
+        const table = this.elements.reportContent.querySelector('.report-table');
+        const selectedColumns = this.getSelectedColumns();
+
+        // Render header
+        const thead = table.querySelector('thead');
+        thead.innerHTML = `
+            <tr>
+                ${selectedColumns.map(column => `
+                    <th>${this.translator.translate(column)}</th>
+                `).join('')}
+            </tr>
+        `;
+
+        // Render body
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = Object.entries(report.periods).map(([period, data]) => 
+            data.entries.map((entry, index) => `
+                <tr>
+                    ${selectedColumns.map(column => {
+                        switch (column) {
+                            case 'period':
+                                return `<td>${index === 0 ? period : ''}</td>`;
+                            case 'project':
+                                return `<td>${entry.projectName}</td>`;
+                            case 'description':
+                                return `<td>${entry.description || '-'}</td>`;
+                            case 'timeSpent':
+                                return `<td>${this.formatDuration(entry.duration)}</td>`;
+                            case 'totalTime':
+                                return `<td>${index === 0 ? this.formatDuration(data.total) : ''}</td>`;
+                            default:
+                                return '<td></td>';
+                        }
+                    }).join('')}
+                </tr>
+            `).join('')
+        ).join('');
+    }
+
+    updateCharts(report) {
+        // Update time distribution chart
+        const timeDistributionData = Object.entries(report.totals.byProject).map(([project, data]) => ({
+            label: project,
+            value: data.duration / (1000 * 60 * 60) // Convert to hours
+        }));
+
+        this.charts.timeDistribution.data = {
+            labels: timeDistributionData.map(d => d.label),
+            datasets: [{
+                data: timeDistributionData.map(d => d.value),
+                backgroundColor: this.generateColors(timeDistributionData.length)
+            }]
+        };
+        this.charts.timeDistribution.update();
+
+        // Update project comparison chart
+        const projectComparisonData = Object.entries(report.periods).map(([period, data]) => ({
+            period,
+            ...Object.entries(data.totals.byProject).reduce((acc, [project, duration]) => {
+                acc[project] = duration / (1000 * 60 * 60); // Convert to hours
+                return acc;
+            }, {})
+        }));
+
+        const projects = Object.keys(report.totals.byProject);
+        this.charts.projectComparison.data = {
+            labels: projectComparisonData.map(d => d.period),
+            datasets: projects.map((project, index) => ({
+                label: project,
+                data: projectComparisonData.map(d => d[project] || 0),
+                backgroundColor: this.generateColors(1)[0],
+                borderColor: this.generateColors(1)[0]
+            }))
+        };
+        this.charts.projectComparison.update();
+    }
+
+    async exportReport(format) {
+        try {
+            await this.reportsFeature.exportReport(format);
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    // Utility functions
+    formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    formatDuration(ms) {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    generateColors(count) {
+        const baseColors = [
+            '#4dabf7', '#69db7c', '#ffd43b', '#ff6b6b',
+            '#cc5de8', '#5c7cfa', '#20c997', '#ff922b'
         ];
 
-        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-    }, [stateManager]);
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(baseColors[i % baseColors.length]);
+        }
+        return colors;
+    }
 
-    // Report generation
-    const handleGenerateReport = async () => {
-        try {
-            await reportsFeature.generateReport({
-                type: reportType,
-                dateRange: {
-                    start: new Date(startDate),
-                    end: new Date(endDate)
-                },
-                selectedProjects: Array.from(selectedProjects),
-                selectedColumns
+    showError(message) {
+        this.elements.errorMessage.textContent = message;
+        this.elements.errorMessage.classList.remove('hidden');
+        
+        setTimeout(() => {
+            this.elements.errorMessage.classList.add('hidden');
+        }, 5000);
+    }
+
+    updateTranslations() {
+        // Update static text elements
+        this.container.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = this.translator.translate(key);
+        });
+
+        // Update chart labels
+        if (this.charts) {
+            // Update time distribution chart
+            if (this.charts.timeDistribution) {
+                this.charts.timeDistribution.options.plugins.title = {
+                    display: true,
+                    text: this.translator.translate('timeDistribution')
+                };
+                this.charts.timeDistribution.update();
+            }
+
+            // Update project comparison chart
+            if (this.charts.projectComparison) {
+                this.charts.projectComparison.options.scales.y.title.text = 
+                    this.translator.translate('hours');
+                this.charts.projectComparison.options.plugins.title = {
+                    display: true,
+                    text: this.translator.translate('projectComparison')
+                };
+                this.charts.projectComparison.update();
+            }
+        }
+
+        // Update button labels
+        const buttonTranslations = {
+            '.generate-button': 'generateReport',
+            '.select-all-button': 'selectAll',
+            '.deselect-all-button': 'deselectAll'
+        };
+
+        Object.entries(buttonTranslations).forEach(([selector, key]) => {
+            const button = this.container.querySelector(selector);
+            if (button) {
+                button.textContent = this.translator.translate(key);
+            }
+        });
+
+        // Update export buttons
+        this.container.querySelectorAll('.export-button').forEach(button => {
+            const format = button.dataset.format;
+            button.textContent = this.translator.translate(`export_as_${format}`);
+        });
+
+        // If there's an active report, re-render it with translated headers
+        if (!this.elements.reportContent.classList.contains('hidden')) {
+            const table = this.elements.reportContent.querySelector('.report-table');
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                const key = header.getAttribute('data-column-key');
+                if (key) {
+                    header.textContent = this.translator.translate(key);
+                }
             });
-        } catch (error) {
-            console.error('Error generating report:', error);
         }
-    };
+    }
 
-    // Export handlers
-    const handleExport = async (format) => {
-        try {
-            await reportsFeature.exportReport(format);
-        } catch (error) {
-            console.error('Error exporting report:', error);
+    destroy() {
+        // Clean up charts
+        if (this.charts) {
+            Object.values(this.charts).forEach(chart => {
+                if (chart) {
+                    chart.destroy();
+                }
+            });
         }
-    };
 
-    // Project selection handlers
-    const handleSelectAllProjects = () => {
-        setSelectedProjects(new Set(projects.map(p => p.id)));
-    };
+        // Remove event listeners
+        this.elements.generateButton.removeEventListener('click', this.generateReport);
+        this.elements.selectAllButton.removeEventListener('click', this.selectAllProjects);
+        this.elements.deselectAllButton.removeEventListener('click', this.deselectAllProjects);
 
-    const handleDeselectAllProjects = () => {
-        setSelectedProjects(new Set());
-    };
-
-    const toggleProject = (projectId) => {
-        const newSelection = new Set(selectedProjects);
-        if (newSelection.has(projectId)) {
-            newSelection.delete(projectId);
-        } else {
-            newSelection.add(projectId);
+        // Clear any intervals or timeouts
+        if (this._errorTimeout) {
+            clearTimeout(this._errorTimeout);
         }
-        setSelectedProjects(newSelection);
-    };
-
-    // Column selection handler
-    const toggleColumn = (column) => {
-        if (selectedColumns.includes(column)) {
-            setSelectedColumns(selectedColumns.filter(c => c !== column));
-        } else {
-            setSelectedColumns([...selectedColumns, column]);
-        }
-    };
-
-    return h('div', { className: `space-y-6 ${className}` }, [
-        // Report configuration
-        h('div', { className: 'bg-muted/50 rounded-lg p-4 space-y-4' }, [
-            // Report type and date range
-            h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' }, [
-                h('div', { className: 'space-y-2' }, [
-                    h('label', { 
-                        className: 'block text-sm font-medium',
-                        htmlFor: 'reportType'
-                    }, translationManager.translate('reportType')),
-                    h('select', {
-                        id: 'reportType',
-                        value: reportType,
-                        onChange: (e) => setReportType(e.target.value),
-                        className: 'w-full rounded-md border bg-background px-3 py-2'
-                    }, [
-                        h('option', { value: 'weekly' }, 
-                            translationManager.translate('weeklySummary')
-                        ),
-                        h('option', { value: 'monthly' }, 
-                            translationManager.translate('monthlySummary')
-                        )
-                    ])
-                ]),
-                h('div', { className: 'space-y-2' }, [
-                    h('label', { 
-                        className: 'block text-sm font-medium',
-                        htmlFor: 'startDate'
-                    }, translationManager.translate('startDate')),
-                    h('input', {
-                        id: 'startDate',
-                        type: 'date',
-                        value: startDate,
-                        onChange: (e) => setStartDate(e.target.value),
-                        className: 'w-full rounded-md border bg-background px-3 py-2'
-                    })
-                ]),
-                h('div', { className: 'space-y-2' }, [
-                    h('label', { 
-                        className: 'block text-sm font-medium',
-                        htmlFor: 'endDate'
-                    }, translationManager.translate('endDate')),
-                    h('input', {
-                        id: 'endDate',
-                        type: 'date',
-                        value: endDate,
-                        onChange: (e) => setEndDate(e.target.value),
-                        className: 'w-full rounded-md border bg-background px-3 py-2'
-                    })
-                ])
-            ]),
-
-            // Project selection
-            h('div', { className: 'space-y-2' }, [
-                h('div', { className: 'flex items-center justify-between' }, [
-                    h('label', { className: 'text-sm font-medium' },
-                        translationManager.translate('selectProjects')
-                    ),
-                    h('div', { className: 'space-x-2' }, [
-                        h('button', {
-                            onClick: handleSelectAllProjects,
-                            className: 'text-sm hover:underline'
-                        }, translationManager.translate('selectAll')),
-                        h('button', {
-                            onClick: handleDeselectAllProjects,
-                            className: 'text-sm hover:underline'
-                        }, translationManager.translate('deselectAll'))
-                    ])
-                ]),
-                h('div', { 
-                    className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2',
-                    role: 'group',
-                    'aria-label': translationManager.translate('projectSelection')
-                }, projects.map(project =>
-                    h('label', {
-                        key: project.id,
-                        className: 'flex items-center space-x-2 p-2 rounded hover:bg-muted cursor-pointer'
-                    }, [
-                        h('input', {
-                            type: 'checkbox',
-                            className: 'hidden',
-                            checked: selectedProjects.has(project.id),
-                            onChange: () => toggleProject(project.id)
-                        }),
-                        selectedProjects.has(project.id) ?
-                            h(CheckSquare, { size: 16 }) :
-                            h(Square, { size: 16 }),
-                        h('span', { className: 'text-sm' }, project.name)
-                    ])
-                ))
-            ]),
-
-            // Column selection
-            h('div', { className: 'space-y-2' }, [
-                h('label', { className: 'block text-sm font-medium' },
-                    translationManager.translate('selectColumns')
-                ),
-                h('div', { 
-                    className: 'flex flex-wrap gap-3',
-                    role: 'group',
-                    'aria-label': translationManager.translate('columnSelection')
-                }, [
-                    'period',
-                    'project',
-                    'description',
-                    'timeSpent',
-                    'totalTime'
-                ].map(column =>
-                    h('label', {
-                        key: column,
-                        className: 'flex items-center space-x-2 p-2 rounded hover:bg-muted cursor-pointer'
-                    }, [
-                        h('input', {
-                            type: 'checkbox',
-                            className: 'hidden',
-                            checked: selectedColumns.includes(column),
-                            onChange: () => toggleColumn(column)
-                        }),
-                        selectedColumns.includes(column) ?
-                            h(CheckSquare, { size: 16 }) :
-                            h(Square, { size: 16 }),
-                        h('span', { className: 'text-sm' },
-                            translationManager.translate(column)
-                        )
-                    ])
-                ))
-            ]),
-
-            // Generate report button
-            h('div', { className: 'flex justify-end' }, [
-                h('button', {
-                    onClick: handleGenerateReport,
-                    disabled: loading || selectedProjects.size === 0,
-                    className: `
-                        inline-flex items-center space-x-2 
-                        px-4 py-2 rounded-md
-                        bg-primary text-primary-foreground 
-                        hover:bg-primary/90 
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                    `
-                }, [
-                    loading ? h(Loader, { 
-                        size: 16,
-                        className: 'animate-spin'
-                    }) : h(FileText, { size: 16 }),
-                    h('span', {}, translationManager.translate('generateReport'))
-                ])
-            ])
-        ]),
-
-        // Error message
-        error && h('div', {
-            className: 'bg-destructive/10 text-destructive rounded-lg p-4 flex items-center space-x-2'
-        }, [
-            h(AlertCircle, { size: 16 }),
-            h('span', {}, error)
-        ]),
-
-        // Report display
-        currentReport && h('div', { className: 'space-y-4' }, [
-            // Export buttons
-            h('div', { className: 'flex justify-end space-x-2' }, [
-                ['csv', 'pdf', 'markdown'].map(format =>
-                    h('button', {
-                        key: format,
-                        onClick: () => handleExport(format),
-                        className: `
-                            inline-flex items-center space-x-2 
-                            px-3 py-2 rounded-md
-                            bg-secondary text-secondary-foreground 
-                            hover:bg-secondary/90
-                        `
-                    }, [
-                        h(Download, { size: 16 }),
-                        h('span', {}, 
-                            translationManager.translate(`export_as_${format}`)
-                        )
-                    ])
-                )
-            ]),
-
-            // Report content
-            h('div', { 
-                className: 'bg-muted/50 rounded-lg overflow-hidden',
-                role: 'region',
-                'aria-label': translationManager.translate('reportContent')
-            }, [
-                // Report header
-                h('div', { className: 'p-4 border-b space-y-2' }, [
-                    h('h3', { className: 'text-lg font-medium' },
-                        translationManager.translate(
-                            reportType === 'weekly' ? 'weeklySummary' : 'monthlySummary'
-                        )
-                    ),
-                    h('div', { className: 'flex items-center space-x-2 text-sm text-muted-foreground' }, [
-                        h(Calendar, { size: 16 }),
-                        h('span', {}, `${startDate} - ${endDate}`)
-                    ])
-                ]),
-
-                // Report data table
-                h('div', { className: 'p-4 overflow-x-auto' }, [
-                    h('table', { className: 'w-full' }, [
-                        h('thead', {}, [
-                            h('tr', { className: 'border-b' }, 
-                                selectedColumns.map(column =>
-                                    h('th', {
-                                        key: column,
-                                        className: 'p-2 text-left text-sm font-medium'
-                                    }, translationManager.translate(column))
-                                )
-                            )
-                        ]),
-                        h('tbody', {}, 
-                            Object.entries(currentReport.periods).flatMap(([period, data]) =>
-                                data.entries.map((entry, index) =>
-                                    h('tr', {
-                                        key: `${period}-${entry.id}`,
-                                        className: 'border-b last:border-0'
-                                    }, selectedColumns.map(column => {
-                                        let content;
-                                        switch (column) {
-                                            case 'period':
-                                                content = period;
-                                                break;
-                                            case 'project':
-                                                content = entry.projectName;
-                                                break;
-                                            case 'description':
-                                                content = entry.description || '-';
-                                                break;
-                                            case 'timeSpent':
-                                                content = entry.formattedDuration;
-                                                break;
-                                            case 'totalTime':
-                                                content = index === 0 ? 
-                                                    this.formatDuration(data.totals.duration) : 
-                                                    '';
-                                                break;
-                                            default:
-                                                content = '';
-                                        }
-                                        return h('td', {
-                                            key: column,
-                                            className: 'p-2 text-sm',
-                                            ...((column === 'period' || column === 'totalTime') && 
-                                                index > 0 && { className: 'p-2 text-sm text-muted-foreground' })
-                                        }, content);
-                                    }))
-                                )
-                            )
-                        )
-                    ])
-                ])
-            ])
-        ])
-    ]);
-};
-
-export default Reports;
+    }
+}

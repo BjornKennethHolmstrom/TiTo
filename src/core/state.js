@@ -1,131 +1,157 @@
 // src/core/state.js
-export class StateManager {
-    constructor() {
-        this.state = {
-            timer: {
-                isRunning: false,
-                startTime: null,
-                elapsedTime: 0,
-                currentProjectId: null
-            },
-            projects: {
-                items: [],
-                currentProjectId: null,
-                loading: false,
-                error: null
-            },
-            timeEntries: {
-                items: [],
-                currentPage: 1,
-                entriesPerPage: 10,
-                totalPages: 1,
-                sortOrder: 'newest',
-                loading: false,
-                error: null
-            },
-            ui: {
-                darkMode: localStorage.getItem('darkMode') === 'true',
-                language: localStorage.getItem('titoLanguage') || 'en',
-                timeGoalsEnabled: localStorage.getItem('timeGoalsEnabled') === 'true',
-                currentTab: 'overallTime',
-                dateRange: {
-                    start: new Date(),
-                    end: new Date(),
-                    quickSelect: 'today'
+(function(window) {
+    'use strict';
+
+    class StateManager {
+        constructor() {
+            // Initial state structure
+            this.state = {
+                timer: {
+                    isRunning: false,
+                    startTime: null,
+                    elapsedTime: 0,
+                    currentProjectId: null,
+                    loading: false,
+                    error: null
+                },
+                projects: {
+                    items: [],
+                    currentProjectId: null,
+                    loading: false,
+                    error: null
+                },
+                timeEntries: {
+                    items: [],
+                    filteredItems: [],
+                    currentPage: 1,
+                    entriesPerPage: 10,
+                    totalPages: 1,
+                    sortOrder: 'newest',
+                    dateRange: {
+                        start: null,
+                        end: null
+                    },
+                    loading: false,
+                    error: null,
+                    filters: {
+                        description: '',
+                        dateRange: null,
+                        projectId: null
+                    }
+                },
+                goals: {
+                    enabled: localStorage.getItem('timeGoalsEnabled') === 'true',
+                    items: [],
+                    overall: null,
+                    progress: {
+                        byProject: {},
+                        overall: 0
+                    },
+                    notifications: [],
+                    loading: false,
+                    error: null
+                },
+                theme: {
+                    current: localStorage.getItem('theme') || 'light',
+                    systemPreference: null,
+                    autoDetect: localStorage.getItem('themeAutoDetect') === 'true',
+                    loading: false,
+                    error: null
+                },
+                settings: {
+                    current: null,
+                    previousSettings: null,
+                    unsavedChanges: false,
+                    loading: false,
+                    error: null
+                },
+                ui: {
+                    currentTab: 'overallTime',
+                    modals: {
+                        info: false,
+                        help: false
+                    },
+                    notifications: []
                 }
-            },
-            timeGoals: {
-                items: [],
-                loading: false,
-                error: null
+            };
+
+            this.subscribers = new Map();
+            this.nextSubscriberId = 1;
+
+            // Debug mode for development
+            this.debugMode = false;
+            
+            // Initialize debug mode from URL parameter
+            if (window.location.search.includes('debug=true')) {
+                this.enableDebugMode();
             }
-        };
-
-        this.subscribers = new Map();
-        this.nextSubscriberId = 1;
-    }
-
-    // Subscription management
-    subscribe(selector, callback) {
-        const id = this.nextSubscriberId++;
-        if (!this.subscribers.has(selector)) {
-            this.subscribers.set(selector, new Map());
         }
-        this.subscribers.get(selector).set(id, callback);
-        
-        // Initial call with current state
-        const selectedState = this.select(selector);
-        callback(selectedState);
-        
-        // Return unsubscribe function
-        return () => {
-            const selectorSubscribers = this.subscribers.get(selector);
-            if (selectorSubscribers) {
-                selectorSubscribers.delete(id);
-                if (selectorSubscribers.size === 0) {
-                    this.subscribers.delete(selector);
+
+        // Enable debug logging
+        enableDebugMode() {
+            this.debugMode = true;
+            console.info('State Manager Debug Mode Enabled');
+        }
+
+        // Debug log helper
+        debugLog(action, path, value) {
+            if (this.debugMode) {
+                console.log(`[State] ${action}:`, { path, value });
+            }
+        }
+
+        // Subscription management
+        subscribe(selector, callback) {
+            if (typeof callback !== 'function') {
+                console.error('Subscriber callback must be a function');
+                return () => {};
+            }
+
+            if (!this.subscribers.has(selector)) {
+                this.subscribers.set(selector, new Map());
+            }
+
+            const id = this.nextSubscriberId++;
+            this.subscribers.get(selector).set(id, callback);
+
+            // Initial call with current state
+            const selectedState = this.select(selector);
+            try {
+                callback(selectedState);
+            } catch (error) {
+                console.error(`Error in subscriber callback for ${selector}:`, error);
+            }
+
+            this.debugLog('Subscribe', selector, { id, subscribersCount: this.subscribers.get(selector).size });
+
+            // Return unsubscribe function
+            return () => {
+                const selectorSubscribers = this.subscribers.get(selector);
+                if (selectorSubscribers) {
+                    selectorSubscribers.delete(id);
+                    if (selectorSubscribers.size === 0) {
+                        this.subscribers.delete(selector);
+                    }
+                    this.debugLog('Unsubscribe', selector, { id });
                 }
-            }
-        };
-    }
-
-    // State selection
-    select(selector) {
-        const parts = selector.split('.');
-        return parts.reduce((obj, key) => obj?.[key], this.state);
-    }
-
-    // State updates
-    update(selector, value) {
-        const parts = selector.split('.');
-        const lastPart = parts.pop();
-        let current = this.state;
-        
-        // Navigate to the correct part of the state
-        for (const part of parts) {
-            if (!(part in current)) {
-                current[part] = {};
-            }
-            current = current[part];
+            };
         }
 
-        // Update the value
-        if (typeof value === 'function') {
-            current[lastPart] = value(current[lastPart]);
-        } else {
-            current[lastPart] = value;
+        // State selection
+        select(selector) {
+            const parts = selector.split('.');
+            return parts.reduce((obj, key) => obj?.[key], this.state);
         }
 
-        // Notify subscribers
-        this.notifySubscribers(selector);
-        
-        // Special handling for persistent UI state
-        if (selector.startsWith('ui.')) {
-            this.persistUIState(selector, current[lastPart]);
-        }
-    }
+        // State updates
+        update(selector, value) {
+            this.debugLog('Update', selector, value);
 
-    // Notify relevant subscribers
-    notifySubscribers(updatedSelector) {
-        this.subscribers.forEach((callbacks, selector) => {
-            if (selector === updatedSelector || 
-                updatedSelector.startsWith(selector + '.') || 
-                selector.startsWith(updatedSelector + '.')) {
-                const selectedState = this.select(selector);
-                callbacks.forEach(callback => callback(selectedState));
-            }
-        });
-    }
-
-    // Batch updates
-    batchUpdate(updates) {
-        const affectedSelectors = new Set();
-        
-        updates.forEach(([selector, value]) => {
             const parts = selector.split('.');
             const lastPart = parts.pop();
             let current = this.state;
-            
+
+            // Navigate to the correct part of the state
             for (const part of parts) {
                 if (!(part in current)) {
                     current[part] = {};
@@ -133,103 +159,155 @@ export class StateManager {
                 current = current[part];
             }
 
+            // Update the value
             if (typeof value === 'function') {
                 current[lastPart] = value(current[lastPart]);
             } else {
                 current[lastPart] = value;
             }
 
-            affectedSelectors.add(selector);
-        });
-
-        // Notify subscribers only once per unique selector
-        affectedSelectors.forEach(selector => {
+            // Notify subscribers
             this.notifySubscribers(selector);
-            if (selector.startsWith('ui.')) {
-                const value = this.select(selector);
-                this.persistUIState(selector, value);
+
+            // Special handling for persistent state
+            if (selector.startsWith('theme.') || 
+                selector.startsWith('goals.enabled') || 
+                selector.startsWith('settings.')) {
+                this.persistState(selector, current[lastPart]);
             }
-        });
-    }
+        }
 
-    // UI state persistence
-    persistUIState(selector, value) {
-        switch (selector) {
-            case 'ui.darkMode':
-                localStorage.setItem('darkMode', value);
-                document.documentElement.setAttribute('data-theme', value ? 'dark' : 'light');
-                break;
-            case 'ui.language':
-                localStorage.setItem('titoLanguage', value);
-                break;
-            case 'ui.timeGoalsEnabled':
-                localStorage.setItem('timeGoalsEnabled', value);
-                document.body.classList.toggle('goals-enabled', value);
-                break;
+        // Batch updates
+        batchUpdate(updates) {
+            this.debugLog('Batch Update', 'multiple', updates);
+
+            const affectedSelectors = new Set();
+
+            updates.forEach(([selector, value]) => {
+                const parts = selector.split('.');
+                const lastPart = parts.pop();
+                let current = this.state;
+
+                for (const part of parts) {
+                    if (!(part in current)) {
+                        current[part] = {};
+                    }
+                    current = current[part];
+                }
+
+                if (typeof value === 'function') {
+                    current[lastPart] = value(current[lastPart]);
+                } else {
+                    current[lastPart] = value;
+                }
+
+                affectedSelectors.add(selector);
+            });
+
+            // Notify subscribers only once per unique selector
+            affectedSelectors.forEach(selector => {
+                this.notifySubscribers(selector);
+
+                // Handle persistent state
+                if (selector.startsWith('theme.') || 
+                    selector.startsWith('goals.enabled') || 
+                    selector.startsWith('settings.')) {
+                    const value = this.select(selector);
+                    this.persistState(selector, value);
+                }
+            });
+        }
+
+        // Notify relevant subscribers
+        notifySubscribers(updatedSelector) {
+            this.subscribers.forEach((callbacks, selector) => {
+                if (selector === updatedSelector || 
+                    updatedSelector.startsWith(selector + '.') || 
+                    selector.startsWith(updatedSelector + '.')) {
+                    const selectedState = this.select(selector);
+                    callbacks.forEach(callback => {
+                        try {
+                            callback(selectedState);
+                        } catch (error) {
+                            console.error(`Error in subscriber callback for ${selector}:`, error);
+                        }
+                    });
+                }
+            });
+        }
+
+        // Persist state to localStorage
+        persistState(selector, value) {
+            try {
+                switch (selector) {
+                    case 'theme.current':
+                        localStorage.setItem('theme', value);
+                        document.documentElement.setAttribute('data-theme', value);
+                        break;
+                    case 'theme.autoDetect':
+                        localStorage.setItem('themeAutoDetect', value);
+                        break;
+                    case 'goals.enabled':
+                        localStorage.setItem('timeGoalsEnabled', value);
+                        document.body.classList.toggle('goals-enabled', value);
+                        break;
+                    case 'settings.current':
+                        localStorage.setItem('titoSettings', JSON.stringify(value));
+                        break;
+                    default:
+                        if (this.debugMode) {
+                            console.log(`No persistence handler for selector: ${selector}`);
+                        }
+                }
+            } catch (error) {
+                console.error(`Error persisting state for ${selector}:`, error);
+            }
+        }
+
+        // Reset state
+        reset() {
+            this.debugLog('Reset', 'all', null);
+
+            // Create fresh state
+            const newState = new StateManager().state;
+
+            // Keep certain values
+            newState.theme.current = this.state.theme.current;
+            newState.theme.autoDetect = this.state.theme.autoDetect;
+            newState.goals.enabled = this.state.goals.enabled;
+
+            this.state = newState;
+
+            // Notify all subscribers
+            this.subscribers.forEach((callbacks, selector) => {
+                const selectedState = this.select(selector);
+                callbacks.forEach(callback => {
+                    try {
+                        callback(selectedState);
+                    } catch (error) {
+                        console.error(`Error in subscriber callback for ${selector}:`, error);
+                    }
+                });
+            });
+        }
+
+        // Get full state (for debugging)
+        getState() {
+            return { ...this.state };
+        }
+
+        // Debug helper to log all subscriptions
+        logSubscriptions() {
+            if (this.debugMode) {
+                console.log('Current Subscriptions:');
+                this.subscribers.forEach((callbacks, selector) => {
+                    console.log(`${selector}: ${callbacks.size} subscribers`);
+                });
+            }
         }
     }
 
-    // State reset
-    reset() {
-        this.state = this.getInitialState();
-        this.subscribers.forEach((callbacks, selector) => {
-            const selectedState = this.select(selector);
-            callbacks.forEach(callback => callback(selectedState));
-        });
-    }
+    // Create global instance
+    window.titoState = new StateManager();
 
-    // Get full state (useful for debugging)
-    getState() {
-        return { ...this.state };
-    }
-
-    // Example action creators
-    actions = {
-        startTimer: (projectId) => {
-            this.batchUpdate([
-                ['timer.isRunning', true],
-                ['timer.startTime', Date.now()],
-                ['timer.currentProjectId', projectId]
-            ]);
-        },
-
-        stopTimer: () => {
-            this.batchUpdate([
-                ['timer.isRunning', false],
-                ['timer.startTime', null],
-                ['timer.elapsedTime', 0],
-                ['timer.currentProjectId', null]
-            ]);
-        },
-
-        setCurrentProject: (projectId) => {
-            this.batchUpdate([
-                ['projects.currentProjectId', projectId],
-                ['timeEntries.currentPage', 1] // Reset pagination when switching projects
-            ]);
-        },
-
-        updateTimeEntryPagination: (page, entriesPerPage) => {
-            this.batchUpdate([
-                ['timeEntries.currentPage', page],
-                ['timeEntries.entriesPerPage', entriesPerPage]
-            ]);
-        },
-
-        toggleDarkMode: () => {
-            this.update('ui.darkMode', current => !current);
-        },
-
-        setLanguage: (language) => {
-            this.update('ui.language', language);
-        },
-
-        setDateRange: (start, end, quickSelect) => {
-            this.batchUpdate([
-                ['ui.dateRange.start', start],
-                ['ui.dateRange.end', end],
-                ['ui.dateRange.quickSelect', quickSelect]
-            ]);
-        }
-    };
-}
+})(window);

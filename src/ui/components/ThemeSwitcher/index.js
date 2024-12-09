@@ -1,147 +1,280 @@
 // src/ui/components/ThemeSwitcher/index.js
-import { Moon, Sun, Monitor } from 'lucide-react';
+class ThemeSwitcher {
+    constructor(themesFeature, stateManager, translationManager, container) {
+        this.themesFeature = themesFeature;
+        this.state = stateManager;
+        this.translator = translationManager;
+        this.container = container;
 
-export const ThemeSwitcher = ({
-    themesFeature,
-    stateManager,
-    translationManager,
-    className = ''
-}) => {
-    // State subscriptions
-    const [currentTheme, setCurrentTheme] = useState(null);
-    const [autoDetect, setAutoDetect] = useState(false);
-    const [customThemes, setCustomThemes] = useState([]);
-    const [showCustomizer, setShowCustomizer] = useState(false);
+        this.elements = {
+            button: null,
+            dropdown: null,
+            themeIcon: null,
+            autoDetectOption: null,
+            customizeButton: null,
+            customizerModal: null
+        };
 
-    useEffect(() => {
-        const unsubscribers = [
-            stateManager.subscribe('theme.current', setCurrentTheme),
-            stateManager.subscribe('theme.autoDetect', setAutoDetect),
-            stateManager.subscribe('theme.customThemes', setCustomThemes)
-        ];
+        this.initialize();
+    }
 
-        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-    }, [stateManager]);
+    initialize() {
+        // Create component structure
+        this.container.innerHTML = `
+            <div class="theme-switcher">
+                <button type="button" 
+                    class="theme-button" 
+                    aria-haspopup="true" 
+                    aria-expanded="false"
+                    aria-label="${this.translator.translate('changeTheme')}">
+                    <svg class="theme-icon theme-light" viewBox="0 0 24 24" width="20" height="20">
+                        <circle cx="12" cy="12" r="5" fill="currentColor"/>
+                        <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <svg class="theme-icon theme-dark" viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+                    </svg>
+                    <svg class="theme-icon theme-system" viewBox="0 0 24 24" width="20" height="20">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                
+                <div class="theme-dropdown hidden" role="menu">
+                    <button type="button" 
+                        class="theme-option" 
+                        data-theme="auto" 
+                        role="menuitemradio">
+                        <svg class="theme-icon theme-system" viewBox="0 0 24 24" width="16" height="16">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="systemTheme">System</span>
+                        <span class="theme-check">✓</span>
+                    </button>
+                    <button type="button" 
+                        class="theme-option" 
+                        data-theme="light" 
+                        role="menuitemradio">
+                        <svg class="theme-icon theme-light" viewBox="0 0 24 24" width="16" height="16">
+                            <circle cx="12" cy="12" r="5" fill="currentColor"/>
+                            <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="lightTheme">Light</span>
+                        <span class="theme-check">✓</span>
+                    </button>
+                    <button type="button" 
+                        class="theme-option" 
+                        data-theme="dark" 
+                        role="menuitemradio">
+                        <svg class="theme-icon theme-dark" viewBox="0 0 24 24" width="16" height="16">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+                        </svg>
+                        <span data-i18n="darkTheme">Dark</span>
+                        <span class="theme-check">✓</span>
+                    </button>
+                </div>
+            </div>
+        `;
 
-    // Quick theme toggle
-    const handleQuickToggle = () => {
-        const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
-        themesFeature.setTheme(nextTheme, false);
-    };
+        // Cache element references
+        this.cacheElements();
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Subscribe to state changes
+        this.setupStateSubscriptions();
 
-    // Theme selection from dropdown
-    const handleThemeChange = (e) => {
-        const themeId = e.target.value;
-        if (themeId === 'auto') {
-            themesFeature.toggleAutoDetect();
-        } else {
-            themesFeature.setTheme(themeId, false);
+        // Initial theme update
+        this.updateThemeDisplay(this.themesFeature.getCurrentTheme());
+    }
+
+    cacheElements() {
+        this.elements.button = this.container.querySelector('.theme-button');
+        this.elements.dropdown = this.container.querySelector('.theme-dropdown');
+        this.elements.themeOptions = this.container.querySelectorAll('.theme-option');
+    }
+
+    setupEventListeners() {
+        // Toggle dropdown
+        this.elements.button.addEventListener('click', () => this.toggleDropdown());
+
+        // Theme selection
+        this.elements.themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.dataset.theme;
+                this.handleThemeChange(theme);
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!this.container.contains(e.target)) {
+                this.closeDropdown();
+            }
+        });
+
+        // Keyboard navigation
+        this.container.addEventListener('keydown', (e) => this.handleKeyboardNavigation(e));
+    }
+
+    setupStateSubscriptions() {
+        this.state.subscribe('theme.current', theme => {
+            this.updateThemeDisplay(theme);
+        });
+
+        this.state.subscribe('theme.autoDetect', autoDetect => {
+            this.updateAutoDetectState(autoDetect);
+        });
+    }
+
+    async handleThemeChange(theme) {
+        try {
+            if (theme === 'auto') {
+                await this.themesFeature.toggleAutoDetect();
+            } else {
+                await this.themesFeature.setTheme(theme, false);
+            }
+            this.closeDropdown();
+        } catch (error) {
+            console.error('Error changing theme:', error);
         }
-    };
+    }
 
-    return h('div', {
-        className: `relative ${className}`
-    }, [
-        // Quick toggle button
-        h('button', {
-            onClick: handleQuickToggle,
-            className: `
-                p-2 rounded-md
-                hover:bg-muted
-                inline-flex items-center gap-2
-            `,
-            'aria-label': translationManager.translate(
-                currentTheme === 'light' ? 'switchToDark' : 'switchToLight'
+    updateThemeDisplay(theme) {
+        // Update button icon
+        this.elements.button.querySelectorAll('.theme-icon').forEach(icon => {
+            icon.classList.add('hidden');
+        });
+        const activeIcon = this.elements.button.querySelector(
+            `.theme-icon.theme-${theme === 'auto' ? 'system' : theme}`
+        );
+        if (activeIcon) activeIcon.classList.remove('hidden');
+
+        // Update selected state in dropdown
+        this.elements.themeOptions.forEach(option => {
+            const check = option.querySelector('.theme-check');
+            const isSelected = option.dataset.theme === theme;
+            check.classList.toggle('hidden', !isSelected);
+            option.setAttribute('aria-checked', isSelected);
+        });
+
+        // Update aria-label
+        this.elements.button.setAttribute(
+            'aria-label',
+            this.translator.translate(
+                theme === 'auto' ? 'systemTheme' :
+                theme === 'light' ? 'lightTheme' : 'darkTheme'
             )
-        }, [
-            currentTheme === 'light' ? 
-                h(Moon, { size: 20 }) : 
-                h(Sun, { size: 20 }),
-            h('span', { className: 'sr-only' },
-                currentTheme === 'light' ?
-                    translationManager.translate('darkMode') :
-                    translationManager.translate('lightMode')
-            )
-        ]),
+        );
+    }
 
-        // Full theme selector dropdown
-        h('select', {
-            value: autoDetect ? 'auto' : currentTheme,
-            onChange: handleThemeChange,
-            className: `
-                ml-2 rounded-md border bg-background
-                px-2 py-1 text-sm
-                focus:outline-none focus:ring-2 focus:ring-primary
-            `
-        }, [
-            // System preference option
-            h('option', { value: 'auto' }, [
-                h('div', { className: 'flex items-center gap-2' }, [
-                    h(Monitor, { size: 16 }),
-                    translationManager.translate('systemPreference')
-                ])
-            ]),
+    updateAutoDetectState(autoDetect) {
+        const systemOption = this.elements.dropdown.querySelector('[data-theme="auto"]');
+        if (systemOption) {
+            const check = systemOption.querySelector('.theme-check');
+            check.classList.toggle('hidden', !autoDetect);
+            systemOption.setAttribute('aria-checked', autoDetect);
+        }
+    }
 
-            // Built-in themes
-            h('optgroup', { 
-                label: translationManager.translate('builtinThemes') 
-            }, [
-                h('option', { value: 'light' }, 
-                    translationManager.translate('lightMode')
-                ),
-                h('option', { value: 'dark' }, 
-                    translationManager.translate('darkMode')
-                )
-            ]),
+    toggleDropdown() {
+        const isExpanded = this.elements.button.getAttribute('aria-expanded') === 'true';
+        if (isExpanded) {
+            this.closeDropdown();
+        } else {
+            this.openDropdown();
+        }
+    }
 
-            // Custom themes
-            customThemes.length > 0 && h('optgroup', {
-                label: translationManager.translate('customThemes')
-            }, customThemes.map(theme =>
-                h('option', { 
-                    key: theme.id,
-                    value: theme.id
-                }, theme.name)
-            ))
-        ]),
+    openDropdown() {
+        this.elements.dropdown.classList.remove('hidden');
+        this.elements.button.setAttribute('aria-expanded', 'true');
+        
+        // Focus first option
+        const firstOption = this.elements.dropdown.querySelector('.theme-option');
+        if (firstOption) {
+            firstOption.focus();
+        }
+    }
 
-        // Theme customizer button
-        h('button', {
-            onClick: () => setShowCustomizer(true),
-            className: `
-                ml-2 p-1 rounded-md
-                hover:bg-muted
-                text-sm text-muted-foreground
-                hover:text-foreground
-            `
-        }, translationManager.translate('customize')),
+    closeDropdown() {
+        this.elements.dropdown.classList.add('hidden');
+        this.elements.button.setAttribute('aria-expanded', 'false');
+    }
 
-        // Theme customizer modal (simplified for brevity)
-        showCustomizer && h('div', {
-            className: 'fixed inset-0 bg-background/80 backdrop-blur-sm z-50'
-        }, [
-            h('div', {
-                className: `
-                    fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]
-                    w-full max-w-lg
-                    bg-background rounded-lg shadow-lg
-                    p-6
-                `,
-                role: 'dialog',
-                'aria-label': translationManager.translate('themeCustomizer')
-            }, [
-                // Modal content would go here
-                // (Theme customization interface)
-                h('button', {
-                    onClick: () => setShowCustomizer(false),
-                    className: 'absolute top-4 right-4 text-muted-foreground hover:text-foreground'
-                }, [
-                    h(X, { size: 16 }),
-                    h('span', { className: 'sr-only' },
-                        translationManager.translate('close')
-                    )
-                ])
-            ])
-        ])
-    ]);
-};
+    handleKeyboardNavigation(e) {
+        const isExpanded = this.elements.button.getAttribute('aria-expanded') === 'true';
+        const options = Array.from(this.elements.themeOptions);
+        const currentIndex = options.findIndex(option => option === document.activeElement);
+
+        switch (e.key) {
+            case 'Escape':
+                if (isExpanded) {
+                    this.closeDropdown();
+                    this.elements.button.focus();
+                }
+                break;
+
+            case 'ArrowDown':
+                e.preventDefault();
+                if (!isExpanded) {
+                    this.openDropdown();
+                } else if (currentIndex < options.length - 1) {
+                    options[currentIndex + 1].focus();
+                }
+                break;
+
+            case 'ArrowUp':
+                e.preventDefault();
+                if (isExpanded && currentIndex > 0) {
+                    options[currentIndex - 1].focus();
+                }
+                break;
+
+            case 'Enter':
+            case ' ':
+                e.preventDefault();
+                if (document.activeElement.classList.contains('theme-option')) {
+                    this.handleThemeChange(document.activeElement.dataset.theme);
+                } else if (document.activeElement === this.elements.button) {
+                    this.toggleDropdown();
+                }
+                break;
+
+            case 'Tab':
+                if (isExpanded) {
+                    this.closeDropdown();
+                }
+                break;
+        }
+    }
+
+    updateTranslations() {
+        this.container.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = this.translator.translate(key);
+        });
+    }
+
+    destroy() {
+        document.removeEventListener('click', this.closeDropdown);
+    }
+}

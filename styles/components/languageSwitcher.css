@@ -1,0 +1,149 @@
+/* styles/components/languageSwitcher.css */
+.language-switcher {
+    position: relative;
+    display: inline-block;
+}
+
+.lang-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.lang-button:hover {
+    background-color: var(--color-background-alt);
+}
+
+.lang-button:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.dropdown-arrow {
+    transition: transform 0.2s;
+}
+
+.lang-button[aria-expanded="true"] .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.lang-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    min-width: 12rem;
+    padding: 0.25rem;
+    background-color: var(--color-background-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    box-shadow: 0 2px 4px var(--color-shadow);
+    z-index: 50;
+}
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: none;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.lang-option:hover {
+    background-color: var(--color-background-alt);
+}
+
+.lang-option:focus {
+    outline: none;
+    background-color: var(--color-background-alt);
+}
+
+.lang-flag {
+    flex-shrink: 0;
+    font-size: 1.25rem;
+    margin-right: 0.75rem;
+}
+
+.lang-name {
+    flex-grow: 1;
+}
+
+.lang-check {
+    flex-shrink: 0;
+    color: var(--color-primary);
+    margin-left: 0.75rem;
+}
+
+/* Settings Container */
+.settings-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* Dark mode specific styles */
+[data-theme="dark"] .lang-dropdown {
+    background-color: var(--color-background-alt);
+    border-color: var(--color-border);
+}
+
+.hidden {
+    display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .language-switcher {
+        width: 100%;
+    }
+
+    .lang-button {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .lang-dropdown {
+        width: 100%;
+        left: 0;
+        right: 0;
+    }
+
+    .lang-name {
+        font-size: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .lang-option {
+        padding: 0.75rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+    .lang-button .lang-name {
+        display: none;
+    }
+
+    .lang-button .lang-flag {
+        margin-right: 0;
+    }
+}

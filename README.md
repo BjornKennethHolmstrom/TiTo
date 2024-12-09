@@ -143,6 +143,78 @@ Accessing App Information:
 - Enhanced data visualization
 - More languages
 
+# File and folder structure
+
+TiTo
+├── CHANGELOG.md
+├── icons
+├── index.html
+├── legacy
+│   ├── icons
+│   ├── index.html
+│   ├── script.js
+│   ├── styles.css
+│   └── translations.js
+├── LICENSE
+├── package.json
+├── README.md
+├── rollup.config.js
+├── src
+│   ├── core
+│   │   ├── database.js
+│   │   ├── projectManager.js
+│   │   ├── state.js
+│   │   ├── timeEntryManager.js
+│   │   └── translationManager.js
+│   ├── features
+│   │   ├── goals.js
+│   │   ├── projects.js
+│   │   ├── reports.js
+│   │   ├── settings.js
+│   │   ├── themes.js
+│   │   └── timer.js
+│   ├── main.js
+│   ├── ui
+│   │   └── components
+│   │       ├── Goals
+│   │       │   └── index.js
+│   │       ├── LanguageSwitcher
+│   │       │   └── index.js
+│   │       ├── ProjectList
+│   │       │   └── index.js
+│   │       ├── Reports
+│   │       │   └── index.js
+│   │       ├── Settings
+│   │       │   └── index.js
+│   │       ├── ThemeSwitcher
+│   │       │   └── index.js
+│   │       ├── TimeEntries
+│   │       │   └── index.js
+│   │       ├── TimerDisplay
+│   │       │   └── index.js
+│   │       └── timerDisplay.js
+│   └── utils
+├── styles
+│   ├── components
+│   │   ├── goals.css
+│   │   ├── languageSwitcher.css
+│   │   ├── projects.css
+│   │   ├── reports.css
+│   │   ├── settings.css
+│   │   ├── themeSwitcher.css
+│   │   ├── timeEntries.css
+│   │   └── timer.css
+│   ├── core
+│   │   ├── layout.css
+│   │   ├── reset.css
+│   │   └── variables.css
+│   └── utilities.css
+├── styles.css
+├── tito-sample-database.json
+└── translations.js
+
+
+
 ## License
 
 See the included file named LICENSE

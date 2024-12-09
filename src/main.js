@@ -1,199 +1,248 @@
-// src/main.js
-import { Database } from './core/database';
-import { ProjectManager } from './core/projectManager';
-import { TimeEntryManager } from './core/timeEntryManager';
-import { Timer } from './core/timer';
-import { TranslationManager } from './core/translationManager';
-import { TimerDisplay } from './ui/components/timerDisplay';
-import { ProjectList } from './ui/components/projectList';
-import { TimeEntryList } from './ui/components/timeEntryList';
-import { Pagination } from './ui/components/pagination';
+// Modified main.js
+(function(window) {
+    'use strict';
 
-// Initialize core services
-const database = new Database();
-const translationManager = new TranslationManager();
-const projectManager = new ProjectManager(database);
-const timeEntryManager = new TimeEntryManager(database);
-const timer = new Timer();
+    // Wait for all required dependencies to be loaded
+    function checkDependencies() {
+        const required = [
+            'titoDatabase', 
+            'titoState', 
+            'titoTranslator', 
+            'titoProjectManager',
+            'titoTimeEntryManager',
+            'titoTimerFeature',
+            'translations'
+        ];
 
-// Initialize UI components
-const timerDisplay = new TimerDisplay(translationManager);
-const projectList = new ProjectList('projectList', {
-    onAddProject: async (name) => {
-        try {
-            await projectManager.addProject(name);
-            await loadProjects();
-        } catch (error) {
-            showError(translationManager.translate('projectNameEmpty'));
-        }
-    },
-    onSelectProject: async (projectId) => {
-        const project = await projectManager.getProject(projectId);
-        projectManager.setCurrentProject(project);
-        timer.setProject(projectId);
-        await loadTimeEntries();
-    },
-    onDeleteProject: async (projectId) => {
-        if (confirm(translationManager.translate('confirmDeleteProject'))) {
-            await projectManager.deleteProject(projectId);
-            await loadProjects();
-        }
-    },
-    onReorderProjects: async (fromIndex, toIndex) => {
-        await projectManager.updateProjectOrder(fromIndex, toIndex);
-        await loadProjects();
-    }
-}, translationManager);
-
-const timeEntryList = new TimeEntryList('timeEntryList', {
-    onAddManualEntry: async () => {
-        const currentProject = projectManager.getCurrentProject();
-        if (!currentProject) {
-            showError(translationManager.translate('selectProjectFirst'));
-            return;
-        }
-        await timeEntryManager.addEntry({
-            projectId: currentProject.id,
-            start: new Date(),
-            end: new Date()
-        });
-        await loadTimeEntries();
-    },
-    onRemoveAllEntries: async () => {
-        if (confirm(translationManager.translate('confirmDeleteTimeEntry'))) {
-            const currentProject = projectManager.getCurrentProject();
-            if (currentProject) {
-                await timeEntryManager.deleteAllEntriesForProject(currentProject.id);
-                await loadTimeEntries();
-            }
+        const missing = required.filter(dep => !window[dep]);
+        if (missing.length > 0) {
+            throw new Error(`Missing required dependencies: ${missing.join(', ')}`);
         }
     }
-}, translationManager);
 
-// Add language switcher
-function addLanguageSwitcher() {
-    const languageSwitch = document.createElement('select');
-    languageSwitch.id = 'languageSwitch';
-    
-    const languages = {
-        'en': 'English',
-        'es': 'Español',
-        'se': 'Svenska',
-        'eu': 'Euskara',
-        'fr': 'Française',
-        'de': 'Deutsch',
-        'ja': '日本語'
-    };
-
-    Object.entries(languages).forEach(([code, name]) => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = name;
-        languageSwitch.appendChild(option);
-    });
-
-    languageSwitch.value = translationManager.getCurrentLanguage();
-    languageSwitch.addEventListener('change', (e) => {
-        translationManager.setLanguage(e.target.value);
-        updateUI();
-    });
-
-    const container = document.querySelector('.title-container');
-    if (container) {
-        container.appendChild(languageSwitch);
-    }
-}
-
-// Update UI with new translations
-function updateUI() {
-    document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (element.tagName === 'INPUT' && element.type === 'checkbox') {
-            const label = element.nextSibling;
-            if (label && label.nodeType === Node.TEXT_NODE) {
-                label.textContent = translationManager.translate(key);
-            }
-        } else {
-            element.textContent = translationManager.translate(key);
-        }
-    });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-        const key = element.getAttribute('data-i18n-placeholder');
-        element.placeholder = translationManager.translate(key);
-    });
-
-    // Refresh all components
-    projectList.render(projectManager.getAllProjects(), projectManager.getCurrentProject()?.id);
-    loadTimeEntries();
-}
-
-// Initialize the application
-async function initializeApp() {
-    try {
-        await database.ready;
-        addLanguageSwitcher();
-        const projects = await projectManager.getAllProjects();
-        if (projects.length > 0) {
-            projectManager.setCurrentProject(projects[0]);
-        }
-        updateUI();
+    // Global error handler
+    function showError(message) {
+        console.error(message);
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'error-message';
+        errorContainer.textContent = message;
+        document.body.appendChild(errorContainer);
         
-        // Set up timer callbacks
-        timer.setCallbacks({
-            onTick: (elapsedTime) => timerDisplay.updateTime(elapsedTime),
-            onStart: () => {
-                timerDisplay.updateStartStopButton(true);
-                timerDisplay.updateProjectDisplay(projectManager.getCurrentProject()?.name);
-            },
-            onStop: async (startTime, stopTime) => {
-                const currentProject = projectManager.getCurrentProject();
-                if (!currentProject) {
-                    showError(translationManager.translate('noProjectForTimer'));
-                    return;
-                }
-                await timeEntryManager.addEntry({
-                    projectId: currentProject.id,
-                    start: startTime,
-                    end: stopTime
-                });
-                await loadTimeEntries();
-            },
-            onReset: () => {
-                timerDisplay.updateStartStopButton(false);
-                timerDisplay.updateProjectDisplay(null);
-            }
-        });
-    } catch (error) {
-        console.error('Failed to initialize app:', error);
-        showError(translationManager.translate('initializationError'));
+        setTimeout(() => {
+            errorContainer.remove();
+        }, 5000);
     }
-}
 
-// Start initialization when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeApp);
-
-// Example usage in timer callbacks
-timer.setCallbacks({
-    onStop: async (startTime, stopTime) => {
+    // Initialize UI components with proper dependency injection
+    async function initializeUI() {
         try {
-            const currentProject = projectManager.getCurrentProject();
-            if (!currentProject) {
-                throw new Error('No project selected');
-            }
+            checkDependencies();
 
-            await timeEntryManager.addEntry({
-                projectId: currentProject.id,
-                start: startTime,
-                end: stopTime
+            // Initialize translation manager first
+            await window.titoTranslator.initialize();
+
+            // Define required containers
+            const containers = {
+                timer: document.getElementById('timerDisplay'),
+                projects: document.getElementById('projectManagement'),
+                timeEntries: document.getElementById('timeEntries'),
+                reports: document.getElementById('reports'),
+                goals: document.getElementById('goals'),
+                themeSwitcher: document.querySelector('.theme-switcher'),
+                languageSwitcher: document.querySelector('.language-switcher')
+            };
+
+            // Convert NodeList to Array for available containers
+            const availableContainers = Array.from(document.querySelectorAll('[id], .theme-switcher, .language-switcher'))
+                .map(el => el.id || el.className)
+                .join(', ');
+
+            // Validate containers with specific error messages
+            Object.entries(containers).forEach(([name, container]) => {
+                if (!container) {
+                    console.error(`Container not found: ${name}`);
+                    console.log('Available containers:', availableContainers);
+                    throw new Error(`Required container not found: ${name}`);
+                }
             });
 
-            // Update UI...
+            // Initialize components
+            const components = {
+                timer: new TimerDisplay(
+                    window.titoTimerFeature,
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.timer
+                ),
+                projects: new ProjectList(
+                    window.titoProjectManager,
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.projects
+                ),
+                timeEntries: new TimeEntries(
+                    window.titoTimeEntryManager, // Use the global instance
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.timeEntries
+                ),
+                reports: new Reports(
+                    window.titoTimeEntryManager, // Use the global instance
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.reports
+                ),
+                goals: new Goals(
+                    window.titoTimeEntryManager, // Use the global instance
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.goals
+                ),
+                theme: new ThemeSwitcher(
+                    window.titoThemesFeature,
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.themeSwitcher
+                ),
+                language: new LanguageSwitcher(
+                    window.titoSettingsFeature,
+                    window.titoState,
+                    window.titoTranslator,
+                    containers.languageSwitcher
+                )
+            };
+
+            return components;
         } catch (error) {
-            console.error('Error saving time entry:', error);
+            console.error('Error initializing UI:', error);
+            showError('Failed to initialize application: ' + error.message);
+            throw error;
         }
     }
-});
 
-// Start initialization when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeApp);
+    // Initialize event listeners after UI components are ready
+    function initializeEventListeners(components) {
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.dataset.tab;
+                
+                tabs.forEach(t => {
+                    t.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                    c.hidden = true;
+                });
+                
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                    targetContent.hidden = false;
+                }
+            });
+        });
+
+        // Modal handling
+        initializeModals();
+
+        // Handle keyboard shortcuts
+        initializeKeyboardShortcuts(components);
+    }
+
+    // Initialize modals
+    function initializeModals() {
+        const infoButton = document.querySelector('.info-icon');
+        const helpButton = document.querySelector('.help-icon');
+        const closeButtons = document.querySelectorAll('.modal .close');
+        const modals = document.querySelectorAll('.modal');
+
+        if (infoButton) {
+            infoButton.addEventListener('click', () => {
+                document.getElementById('infoModal').style.display = 'block';
+            });
+        }
+
+        if (helpButton) {
+            helpButton.addEventListener('click', () => {
+                document.getElementById('helpModal').style.display = 'block';
+            });
+        }
+
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                button.closest('.modal').style.display = 'none';
+            });
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+
+        // Handle Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                modals.forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        });
+    }
+
+    // Initialize keyboard shortcuts
+    function initializeKeyboardShortcuts(components) {
+        document.addEventListener('keydown', (e) => {
+            // Only handle shortcuts when not in input/textarea
+            if (e.target.matches('input, textarea')) return;
+
+            // Start/Stop timer (Space)
+            if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+                if (components.timer) {
+                    components.timer.handleStartStop();
+                }
+            }
+        });
+    }
+
+    // Main initialization
+    async function initializeApp() {
+        try {
+            // Wait for database to be ready
+            await window.titoDatabase.ready;
+
+            // Initialize UI components
+            const components = await initializeUI();
+
+            // Initialize event listeners
+            initializeEventListeners(components);
+
+            // Load initial data
+            const projects = await window.titoProjectManager.getAllProjects();
+            if (projects.length > 0) {
+                window.titoProjectManager.setCurrentProject(projects[0]);
+            }
+
+            console.info('Application initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize application:', error);
+            showError('Failed to initialize application: ' + error.message);
+        }
+    }
+
+    // Initialize app when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        initializeApp();
+    }
+
+})(window);

@@ -1,364 +1,356 @@
 // src/features/goals.js
-export class GoalsFeature {
-    constructor(timeEntryManager, projectManager, stateManager, translationManager) {
-        this.timeEntryManager = timeEntryManager;
-        this.projectManager = projectManager;
-        this.state = stateManager;
-        this.translator = translationManager;
+(function(window) {
+    'use strict';
 
-        this.initializeState();
-        this.setupSubscriptions();
-    }
+    class GoalsFeature {
+        constructor() {
+            // Check dependencies
+            if (!window.titoDatabase) {
+                throw new Error('Database service not found');
+            }
+            if (!window.titoState) {
+                throw new Error('State Manager not found');
+            }
+            if (!window.titoTranslator) {
+                throw new Error('Translation Manager not found');
+            }
+            if (!window.titoTimeEntryManager) {
+                throw new Error('Time Entry Manager not found');
+            }
+            if (!window.titoProjectManager) {
+                throw new Error('Project Manager not found');
+            }
 
-    initializeState() {
-        this.state.batchUpdate([
-            ['goals', {
+            // Initialize service references
+            this.db = window.titoDatabase;
+            this.state = window.titoState;
+            this.translator = window.titoTranslator;
+            this.timeEntryManager = window.titoTimeEntryManager;
+            this.projectManager = window.titoProjectManager;
+
+            // Initialize state
+            this.state.update('goals', {
                 enabled: localStorage.getItem('timeGoalsEnabled') === 'true',
-                items: [], // Project-specific goals
-                overall: null, // Overall goal
+                items: [],
+                overall: null,
                 progress: {
                     byProject: {},
                     overall: 0
                 },
-                notifications: [],
-                loading: false,
-                error: null
-            }]
-        ]);
-    }
-
-    setupSubscriptions() {
-        // Update progress when time entries change
-        this.state.subscribe('timeEntries.items', () => {
-            this.updateAllProgress();
-        });
-
-        // Enable/disable goals
-        this.state.subscribe('goals.enabled', (enabled) => {
-            localStorage.setItem('timeGoalsEnabled', enabled);
-            document.body.classList.toggle('goals-enabled', enabled);
-        });
-    }
-
-    // Goal management
-    async setProjectGoal(projectId, hours, period) {
-        try {
-            this.state.update('goals.loading', true);
-
-            const project = await this.projectManager.getProject(projectId);
-            if (!project) {
-                throw new Error(this.translator.translate('projectNotFound'));
-            }
-
-            if (!this.validateGoalInput(hours, period)) {
-                throw new Error(this.translator.translate('invalidGoalInput'));
-            }
-
-            const goal = {
-                projectId,
-                hours: parseFloat(hours),
-                period,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            // Update goals array
-            const currentGoals = this.state.select('goals.items');
-            const existingIndex = currentGoals.findIndex(g => g.projectId === projectId);
-
-            let updatedGoals;
-            if (existingIndex !== -1) {
-                updatedGoals = [
-                    ...currentGoals.slice(0, existingIndex),
-                    goal,
-                    ...currentGoals.slice(existingIndex + 1)
-                ];
-            } else {
-                updatedGoals = [...currentGoals, goal];
-            }
-
-            this.state.batchUpdate([
-                ['goals.items', updatedGoals],
-                ['goals.loading', false],
-                ['goals.error', null]
-            ]);
-
-            await this.updateProjectProgress(projectId);
-            this.checkGoalProgress(projectId);
-
-        } catch (error) {
-            this.state.batchUpdate([
-                ['goals.loading', false],
-                ['goals.error', error.message]
-            ]);
-            throw error;
-        }
-    }
-
-    async setOverallGoal(hours, period) {
-        try {
-            this.state.update('goals.loading', true);
-
-            if (!this.validateGoalInput(hours, period)) {
-                throw new Error(this.translator.translate('invalidGoalInput'));
-            }
-
-            const goal = {
-                hours: parseFloat(hours),
-                period,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            this.state.batchUpdate([
-                ['goals.overall', goal],
-                ['goals.loading', false],
-                ['goals.error', null]
-            ]);
-
-            await this.updateOverallProgress();
-            this.checkOverallProgress();
-
-        } catch (error) {
-            this.state.batchUpdate([
-                ['goals.loading', false],
-                ['goals.error', error.message]
-            ]);
-            throw error;
-        }
-    }
-
-    async removeProjectGoal(projectId) {
-        try {
-            const currentGoals = this.state.select('goals.items');
-            const updatedGoals = currentGoals.filter(g => g.projectId !== projectId);
-
-            this.state.batchUpdate([
-                ['goals.items', updatedGoals],
-                ['goals.progress.byProject', {
-                    ...this.state.select('goals.progress.byProject'),
-                    [projectId]: null
-                }]
-            ]);
-        } catch (error) {
-            this.state.update('goals.error', error.message);
-            throw error;
-        }
-    }
-
-    async removeOverallGoal() {
-        try {
-            this.state.batchUpdate([
-                ['goals.overall', null],
-                ['goals.progress.overall', 0]
-            ]);
-        } catch (error) {
-            this.state.update('goals.error', error.message);
-            throw error;
-        }
-    }
-
-    // Progress calculation
-    async updateProjectProgress(projectId) {
-        const goal = this.state.select('goals.items')
-            .find(g => g.projectId === projectId);
-
-        if (!goal) return;
-
-        const timeSpent = await this.calculateTimeSpentForPeriod(
-            projectId,
-            goal.period
-        );
-
-        const progress = (timeSpent / (goal.hours * 3600000)) * 100;
-
-        this.state.update('goals.progress.byProject', current => ({
-            ...current,
-            [projectId]: Math.min(progress, 100)
-        }));
-    }
-
-    async updateOverallProgress() {
-        const goal = this.state.select('goals.overall');
-        if (!goal) return;
-
-        const timeSpent = await this.calculateOverallTimeSpentForPeriod(goal.period);
-        const progress = (timeSpent / (goal.hours * 3600000)) * 100;
-
-        this.state.update('goals.progress.overall', Math.min(progress, 100));
-    }
-
-    async updateAllProgress() {
-        const goals = this.state.select('goals.items');
-        const promises = goals.map(goal => this.updateProjectProgress(goal.projectId));
-        await Promise.all(promises);
-        await this.updateOverallProgress();
-    }
-
-    // Time calculations
-    async calculateTimeSpentForPeriod(projectId, period) {
-        const { start, end } = this.getPeriodDates(period);
-        const entries = await this.timeEntryManager.getEntriesInDateRange(
-            start,
-            end,
-            [projectId]
-        );
-
-        return entries.reduce((total, entry) => total + entry.duration, 0);
-    }
-
-    async calculateOverallTimeSpentForPeriod(period) {
-        const { start, end } = this.getPeriodDates(period);
-        const entries = await this.timeEntryManager.getEntriesInDateRange(
-            start,
-            end
-        );
-
-        return entries.reduce((total, entry) => total + entry.duration, 0);
-    }
-
-    // Progress monitoring and notifications
-    checkGoalProgress(projectId) {
-        const progress = this.state.select('goals.progress.byProject')[projectId];
-        if (!progress) return;
-
-        if (progress >= 100) {
-            this.addNotification({
-                type: 'success',
-                message: this.translator.translate('goalAchieved', {
-                    project: this.getProjectName(projectId)
-                })
+                notifications: []
             });
-        } else if (progress >= 90) {
-            this.addNotification({
-                type: 'warning',
-                message: this.translator.translate('goalNearlyAchieved', {
-                    project: this.getProjectName(projectId),
-                    progress: Math.floor(progress)
-                })
-            });
-        }
-    }
 
-    checkOverallProgress() {
-        const progress = this.state.select('goals.progress.overall');
-        if (progress >= 100) {
-            this.addNotification({
-                type: 'success',
-                message: this.translator.translate('overallGoalAchieved')
-            });
-        } else if (progress >= 90) {
-            this.addNotification({
-                type: 'warning',
-                message: this.translator.translate('overallGoalNearlyAchieved', {
-                    progress: Math.floor(progress)
-                })
-            });
+            // Debug mode
+            this.debugMode = window.location.search.includes('debug=true');
         }
-    }
 
-    // Notification management
-    addNotification(notification) {
-        const notifications = this.state.select('goals.notifications');
-        this.state.update('goals.notifications', [
-            ...notifications,
-            {
-                id: Date.now(),
-                timestamp: new Date().toISOString(),
-                ...notification
+        async initialize() {
+            try {
+                await this.loadGoals();
+                await this.updateAllProgress();
+                this.debugLog('Goals feature initialized');
+            } catch (error) {
+                console.error('Failed to initialize goals:', error);
+                throw error;
             }
-        ]);
-
-        // Auto-remove notification after 5 seconds
-        setTimeout(() => {
-            this.removeNotification(notification.id);
-        }, 5000);
-    }
-
-    removeNotification(id) {
-        const notifications = this.state.select('goals.notifications');
-        this.state.update(
-            'goals.notifications',
-            notifications.filter(n => n.id !== id)
-        );
-    }
-
-    // Utility functions
-    validateGoalInput(hours, period) {
-        if (!hours || isNaN(hours) || hours <= 0) {
-            return false;
         }
 
-        if (!['daily', 'weekly', 'monthly'].includes(period)) {
-            return false;
+        async loadGoals() {
+            try {
+                this.state.update('goals.loading', true);
+                
+                // Load all goals from database
+                const projectGoals = await this.db.getAll('timeGoals');
+                const overallGoal = projectGoals.find(g => g.id === 'overall');
+                const itemGoals = projectGoals.filter(g => g.id !== 'overall');
+
+                this.state.batchUpdate([
+                    ['goals.items', itemGoals],
+                    ['goals.overall', overallGoal],
+                    ['goals.loading', false]
+                ]);
+
+                this.debugLog('Goals loaded', { projectGoals: itemGoals, overallGoal });
+            } catch (error) {
+                console.error('Error loading goals:', error);
+                this.state.update('goals.error', this.translator.translate('errorLoadingGoals'));
+                throw error;
+            }
         }
 
-        return true;
-    }
+        async setProjectGoal(projectId, hours, period) {
+            try {
+                this.state.update('goals.loading', true);
 
-    getPeriodDates(period) {
-        const now = new Date();
-        let start = new Date(now);
-        
-        switch (period) {
-            case 'daily':
-                start.setHours(0, 0, 0, 0);
-                break;
-            case 'weekly':
-                start.setDate(now.getDate() - now.getDay());
-                start.setHours(0, 0, 0, 0);
-                break;
-            case 'monthly':
-                start.setDate(1);
-                start.setHours(0, 0, 0, 0);
-                break;
-            default:
-                throw new Error(this.translator.translate('invalidPeriod'));
+                const project = await this.projectManager.getProject(projectId);
+                if (!project) {
+                    throw new Error(this.translator.translate('projectNotFound'));
+                }
+
+                if (!this.validateGoalInput(hours, period)) {
+                    throw new Error(this.translator.translate('invalidGoalInput'));
+                }
+
+                const goal = {
+                    projectId,
+                    hours: parseFloat(hours),
+                    period,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Save to database
+                await this.db.add('timeGoals', goal);
+
+                // Update state
+                const currentGoals = this.state.select('goals.items');
+                this.state.update('goals.items', [...currentGoals, goal]);
+
+                await this.updateProjectProgress(projectId);
+                this.checkGoalProgress(projectId);
+
+                this.debugLog('Project goal set', goal);
+            } catch (error) {
+                console.error('Error setting project goal:', error);
+                this.state.update('goals.error', error.message);
+                throw error;
+            } finally {
+                this.state.update('goals.loading', false);
+            }
         }
 
-        return {
-            start,
-            end: now
-        };
-    }
+        async setOverallGoal(hours, period) {
+            try {
+                this.state.update('goals.loading', true);
 
-    getProjectName(projectId) {
-        const projects = this.state.select('projects.items');
-        return projects.find(p => p.id === projectId)?.name || 
-            this.translator.translate('unknownProject');
-    }
+                if (!this.validateGoalInput(hours, period)) {
+                    throw new Error(this.translator.translate('invalidGoalInput'));
+                }
 
-    // Export goals data
-    async exportGoalsData() {
-        const goals = {
-            overall: this.state.select('goals.overall'),
-            projects: await Promise.all(
-                this.state.select('goals.items').map(async goal => {
-                    const timeSpent = await this.calculateTimeSpentForPeriod(
-                        goal.projectId,
-                        goal.period
+                const goal = {
+                    id: 'overall',
+                    hours: parseFloat(hours),
+                    period,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Save to database
+                await this.db.add('timeGoals', goal);
+
+                // Update state
+                this.state.update('goals.overall', goal);
+
+                await this.updateOverallProgress();
+                this.checkOverallProgress();
+
+                this.debugLog('Overall goal set', goal);
+            } catch (error) {
+                console.error('Error setting overall goal:', error);
+                this.state.update('goals.error', error.message);
+                throw error;
+            } finally {
+                this.state.update('goals.loading', false);
+            }
+        }
+
+        async removeGoal(goalId) {
+            try {
+                await this.db.delete('timeGoals', goalId);
+
+                if (goalId === 'overall') {
+                    this.state.batchUpdate([
+                        ['goals.overall', null],
+                        ['goals.progress.overall', 0]
+                    ]);
+                } else {
+                    const currentGoals = this.state.select('goals.items');
+                    this.state.update('goals.items', 
+                        currentGoals.filter(g => g.projectId !== goalId)
                     );
-                    return {
-                        ...goal,
-                        projectName: this.getProjectName(goal.projectId),
-                        timeSpent,
-                        progress: this.state.select('goals.progress.byProject')[goal.projectId]
-                    };
-                })
-            )
-        };
+                    
+                    // Remove progress
+                    const progress = this.state.select('goals.progress.byProject');
+                    delete progress[goalId];
+                    this.state.update('goals.progress.byProject', progress);
+                }
 
-        if (goals.overall) {
-            const overallTimeSpent = await this.calculateOverallTimeSpentForPeriod(
-                goals.overall.period
-            );
-            goals.overall = {
-                ...goals.overall,
-                timeSpent: overallTimeSpent,
-                progress: this.state.select('goals.progress.overall')
-            };
+                this.debugLog('Goal removed', { goalId });
+            } catch (error) {
+                console.error('Error removing goal:', error);
+                this.state.update('goals.error', this.translator.translate('errorRemovingGoal'));
+                throw error;
+            }
         }
 
-        return goals;
+        async updateProjectProgress(projectId) {
+            const goals = this.state.select('goals.items');
+            const goal = goals.find(g => g.projectId === projectId);
+
+            if (!goal) return;
+
+            const timeSpent = await this.calculateTimeSpentForPeriod(
+                projectId,
+                goal.period
+            );
+
+            const progress = (timeSpent / (goal.hours * 3600000)) * 100;
+
+            this.state.update('goals.progress.byProject', current => ({
+                ...current,
+                [projectId]: Math.min(progress, 100)
+            }));
+        }
+
+        async updateOverallProgress() {
+            const goal = this.state.select('goals.overall');
+            if (!goal) return;
+
+            const timeSpent = await this.calculateOverallTimeSpentForPeriod(goal.period);
+            const progress = (timeSpent / (goal.hours * 3600000)) * 100;
+
+            this.state.update('goals.progress.overall', Math.min(progress, 100));
+        }
+
+        async updateAllProgress() {
+            const goals = this.state.select('goals.items');
+            await Promise.all(goals.map(goal => this.updateProjectProgress(goal.projectId)));
+            await this.updateOverallProgress();
+        }
+
+        async calculateTimeSpentForPeriod(projectId, period) {
+            const { start, end } = this.getPeriodDates(period);
+            const entries = await this.timeEntryManager.getEntriesInDateRange(
+                start,
+                end,
+                [projectId]
+            );
+
+            return entries.reduce((total, entry) => total + entry.duration, 0);
+        }
+
+        async calculateOverallTimeSpentForPeriod(period) {
+            const { start, end } = this.getPeriodDates(period);
+            const entries = await this.timeEntryManager.getEntriesInDateRange(
+                start,
+                end
+            );
+
+            return entries.reduce((total, entry) => total + entry.duration, 0);
+        }
+
+        checkGoalProgress(projectId) {
+            const progress = this.state.select('goals.progress.byProject')[projectId];
+            if (!progress) return;
+
+            if (progress >= 100) {
+                this.addNotification({
+                    type: 'success',
+                    message: this.translator.translate('goalAchieved', {
+                        project: this.getProjectName(projectId)
+                    })
+                });
+            } else if (progress >= 90) {
+                this.addNotification({
+                    type: 'warning',
+                    message: this.translator.translate('goalNearlyAchieved', {
+                        project: this.getProjectName(projectId),
+                        progress: Math.floor(progress)
+                    })
+                });
+            }
+        }
+
+        checkOverallProgress() {
+            const progress = this.state.select('goals.progress.overall');
+            if (progress >= 100) {
+                this.addNotification({
+                    type: 'success',
+                    message: this.translator.translate('overallGoalAchieved')
+                });
+            } else if (progress >= 90) {
+                this.addNotification({
+                    type: 'warning',
+                    message: this.translator.translate('overallGoalNearlyAchieved', {
+                        progress: Math.floor(progress)
+                    })
+                });
+            }
+        }
+
+        addNotification(notification) {
+            const notifications = this.state.select('goals.notifications');
+            this.state.update('goals.notifications', [
+                ...notifications,
+                {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    ...notification
+                }
+            ]);
+
+            setTimeout(() => {
+                this.removeNotification(notification.id);
+            }, 5000);
+        }
+
+        removeNotification(id) {
+            const notifications = this.state.select('goals.notifications');
+            this.state.update(
+                'goals.notifications',
+                notifications.filter(n => n.id !== id)
+            );
+        }
+
+        validateGoalInput(hours, period) {
+            if (!hours || isNaN(hours) || hours <= 0) {
+                return false;
+            }
+
+            if (!['daily', 'weekly', 'monthly'].includes(period)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        getPeriodDates(period) {
+            const now = new Date();
+            let start = new Date(now);
+            
+            switch (period) {
+                case 'daily':
+                    start.setHours(0, 0, 0, 0);
+                    break;
+                case 'weekly':
+                    start.setDate(now.getDate() - now.getDay());
+                    start.setHours(0, 0, 0, 0);
+                    break;
+                case 'monthly':
+                    start.setDate(1);
+                    start.setHours(0, 0, 0, 0);
+                    break;
+                default:
+                    throw new Error(this.translator.translate('invalidPeriod'));
+            }
+
+            return { start, end: now };
+        }
+
+        getProjectName(projectId) {
+            const projects = this.projectManager.getAllProjects();
+            const project = projects.find(p => p.id === projectId);
+            return project ? project.name : this.translator.translate('unknownProject');
+        }
+
+        debugLog(action, data = null) {
+            if (this.debugMode) {
+                console.log(`[Goals] ${action}:`, data);
+            }
+        }
     }
-}
+
+    // Create global instance
+    window.titoGoalsFeature = new GoalsFeature();
+
+})(window);

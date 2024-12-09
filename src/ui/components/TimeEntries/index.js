@@ -1,411 +1,530 @@
-// src/ui/components/TimeEntries/index.js
-import { createElement as h } from 'react';
-import { useState, useEffect, useRef } from 'react';
-import { 
-    Trash2, 
-    Plus, 
-    Calendar, 
-    Clock, 
-    Search,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
-    ArrowUpDown
-} from 'lucide-react';
+// ui/components/TimeEntries/index.js
+class TimeEntries {
+    constructor(timeEntryManager, stateManager, translationManager, container) {
+        // Validate dependencies
+        if (!timeEntryManager) {
+            throw new Error('Time Entry Manager is required');
+        }
+        if (!stateManager) {
+            throw new Error('State Manager is required');
+        }
+        if (!translationManager) {
+            throw new Error('Translation Manager is required');
+        }
 
-export const TimeEntries = ({
-    timeEntriesFeature,
-    stateManager,
-    translationManager,
-    className = ''
-}) => {
-    // Local state
-    const [editingId, setEditingId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showAddEntry, setShowAddEntry] = useState(false);
-    const editFormRef = useRef(null);
+        // Store references
+        this.timeEntryManager = timeEntryManager;
+        this.state = stateManager;
+        this.translator = translationManager;
+        this.container = container instanceof HTMLElement ? 
+            container : 
+            document.getElementById(container);
 
-    // Subscribe to state
-    const [entries, setEntries] = useState([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const [sortOrder, setSortOrder] = useState('newest');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+        if (!this.container) {
+            throw new Error(`Time entries container not found: ${container}`);
+        }
 
-    useEffect(() => {
-        const unsubscribers = [
-            stateManager.subscribe('timeEntries.filteredItems', entries => {
-                const currentPageEntries = timeEntriesFeature.getCurrentPageEntries();
-                setEntries(currentPageEntries);
-            }),
-            stateManager.subscribe('timeEntries.currentPage', setCurrentPage),
-            stateManager.subscribe('timeEntries.totalPages', setTotalPages),
-            stateManager.subscribe('timeEntries.entriesPerPage', setEntriesPerPage),
-            stateManager.subscribe('timeEntries.sortOrder', setSortOrder),
-            stateManager.subscribe('timeEntries.loading', setLoading),
-            stateManager.subscribe('timeEntries.error', setError)
-        ];
+        // Initialize element references
+        this.elements = {
+            entriesList: null,
+            addButton: null,
+            addForm: null,
+            pagination: null,
+            entriesPerPage: null,
+            sortButton: null,
+            errorMessage: null,
+            pageInput: null,
+            totalPages: null
+        };
 
-        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-    }, [stateManager, timeEntriesFeature]);
+        // Initialize the component
+        this.initialize();
+    }
 
-    // Add new time entry
-    const handleAddEntry = async (formData) => {
+    initialize() {
         try {
-            await timeEntriesFeature.addEntry({
-                start: new Date(formData.get('start')),
-                end: new Date(formData.get('end')),
-                description: formData.get('description') || ''
+            // Create component structure
+            this.container.innerHTML = this.createTemplate();
+            
+            // Cache element references
+            this.cacheElements();
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            // Subscribe to state changes
+            this.subscribeToStateChanges();
+
+            // Set initial values
+            this.setDefaultFormTimes();
+
+            // Initialize drag and drop
+            this.setupDragAndDrop();
+
+        } catch (error) {
+            console.error('Error initializing TimeEntries:', error);
+            throw error;
+        }
+    }
+
+    cacheElements() {
+        this.elements.entriesList = this.container.querySelector('.time-entries-list');
+        this.elements.addButton = this.container.querySelector('.add-entry-button');
+        this.elements.addForm = this.container.querySelector('.add-entry-form');
+        this.elements.pagination = this.container.querySelector('.pagination');
+        this.elements.entriesPerPage = this.container.querySelector('.entries-select');
+        this.elements.sortButton = this.container.querySelector('.sort-button');
+        this.elements.errorMessage = this.container.querySelector('.error-message');
+        this.elements.pageInput = this.container.querySelector('.page-input');
+        this.elements.totalPages = this.container.querySelector('.total-pages');
+
+        // Validate essential elements
+        if (!this.elements.entriesList) throw new Error('Time entries list container not found');
+        if (!this.elements.addButton) throw new Error('Add entry button not found');
+        if (!this.elements.addForm) throw new Error('Add entry form not found');
+    }
+
+    createTemplate() {
+        return `
+            <div class="time-entries-section">
+                <div class="section-header">
+                    <h2 class="section-heading" data-i18n="timeEntries">Time Entries</h2>
+                    
+                    <div class="header-controls">
+                        <button class="add-entry-button" data-i18n="addManualEntry">
+                            Add Manual Entry
+                        </button>
+                        <button class="sort-button" data-i18n="sortEntries">
+                            Sort: Newest First
+                        </button>
+                    </div>
+                </div>
+
+                <div class="entries-per-page">
+                    <label data-i18n="entriesPerPage">Entries per page:</label>
+                    <select class="entries-select">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all" data-i18n="all">All</option>
+                    </select>
+                </div>
+
+                <form class="add-entry-form hidden">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="entryStartDate" data-i18n="startDate">Start Date:</label>
+                            <input type="date" id="entryStartDate" required>
+                            <input type="time" id="entryStartTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="entryEndDate" data-i18n="endDate">End Date:</label>
+                            <input type="date" id="entryEndDate" required>
+                            <input type="time" id="entryEndTime" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="entryDescription" data-i18n="description">Description:</label>
+                        <input type="text" id="entryDescription" class="description-input">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="save-button" data-i18n="add">Add</button>
+                        <button type="button" class="cancel-button" data-i18n="cancel">Cancel</button>
+                    </div>
+                </form>
+
+                <div class="error-message hidden"></div>
+
+                <ul class="time-entries-list" role="list"></ul>
+
+                <div class="pagination">
+                    <button class="pagination-button" data-action="first">⟨⟨</button>
+                    <button class="pagination-button" data-action="prev">⟨</button>
+                    <span class="page-info">
+                        Page <input type="number" class="page-input" min="1"> 
+                        of <span class="total-pages">1</span>
+                    </span>
+                    <button class="pagination-button" data-action="next">⟩</button>
+                    <button class="pagination-button" data-action="last">⟩⟩</button>
+                </div>
+            </div>
+        `;
+    }
+
+    setupEventListeners() {
+        // Add entry button
+        this.elements.addButton.addEventListener('click', () => {
+            this.elements.addForm.classList.remove('hidden');
+            this.setDefaultFormTimes();
+        });
+
+        // Form submission
+        this.elements.addForm.addEventListener('submit', (e) => this.handleAddEntry(e));
+
+        // Form cancel
+        this.elements.addForm.querySelector('.cancel-button').addEventListener('click', () => {
+            this.elements.addForm.classList.add('hidden');
+        });
+
+        // Entries per page
+        this.elements.entriesPerPage.addEventListener('change', (e) => {
+            this.timeEntriesFeature.setEntriesPerPage(
+                e.target.value === 'all' ? Infinity : parseInt(e.target.value)
+            );
+        });
+
+        // Sort button
+        this.elements.sortButton.addEventListener('click', () => {
+            const newOrder = this.timeEntriesFeature.getSortOrder() === 'newest' ? 'oldest' : 'newest';
+            this.timeEntriesFeature.setSortOrder(newOrder);
+            this.updateSortButtonText(newOrder);
+        });
+
+        // Pagination
+        this.elements.pagination.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (action) {
+                this.handlePaginationClick(action);
+            }
+        });
+
+        // Page input
+        this.elements.pageInput.addEventListener('change', (e) => {
+            const page = parseInt(e.target.value);
+            if (page >= 1 && page <= this.timeEntriesFeature.getTotalPages()) {
+                this.timeEntriesFeature.setPage(page);
+            } else {
+                e.target.value = this.timeEntriesFeature.getCurrentPage();
+            }
+        });
+    }
+
+    subscribeToStateChanges() {
+        // Update method names to match TimeEntryManager
+        this.state.subscribe('timeEntries.items', entries => this.renderEntries(entries));
+        this.state.subscribe('timeEntries.currentPage', () => this.updatePagination());
+        this.state.subscribe('timeEntries.totalPages', () => this.updatePaginationButtons());
+        this.state.subscribe('timeEntries.error', error => this.showError(error));
+    }
+
+    renderEntries(entries) {
+        const list = this.elements.entriesList;
+        list.innerHTML = '';
+
+        entries.forEach(entry => {
+            const li = this.createEntryElement(entry);
+            list.appendChild(li);
+        });
+    }
+
+    createEntryElement(entry) {
+        const li = document.createElement('li');
+        li.className = 'time-entry-item';
+        li.id = `entry-${entry.id}`;
+        li.draggable = true;
+
+        const startDate = new Date(entry.start);
+        const endDate = new Date(entry.end);
+
+        li.innerHTML = `
+            <div class="entry-content">
+                <div class="entry-times">
+                    <div class="time-group">
+                        <input type="date" class="date-input" value="${this.formatDate(startDate)}">
+                        <input type="time" class="time-input" value="${this.formatTime(startDate)}">
+                    </div>
+                    <span class="time-separator">→</span>
+                    <div class="time-group">
+                        <input type="date" class="date-input" value="${this.formatDate(endDate)}">
+                        <input type="time" class="time-input" value="${this.formatTime(endDate)}">
+                    </div>
+                </div>
+                <input type="text" class="description-input" value="${entry.description || ''}" 
+                    placeholder="${this.translator.translate('enterDescription')}">
+                <div class="entry-duration">${this.formatDuration(entry.duration)}</div>
+                <button class="delete-button" aria-label="${this.translator.translate('deleteEntry')}">
+                    🗑️
+                </button>
+            </div>
+        `;
+
+        // Add event listeners
+        const timeInputs = li.querySelectorAll('input[type="date"], input[type="time"]');
+        timeInputs.forEach(input => {
+            input.addEventListener('change', () => this.handleTimeChange(entry.id, li));
+        });
+
+        const descInput = li.querySelector('.description-input');
+        descInput.addEventListener('change', () => {
+            this.timeEntriesFeature.updateEntry(entry.id, {
+                description: descInput.value
             });
-            setShowAddEntry(false);
-        } catch (error) {
-            console.error('Error adding time entry:', error);
-        }
-    };
+        });
 
-    // Update time entry
-    const handleUpdateEntry = async (entryId, formData) => {
+        const deleteButton = li.querySelector('.delete-button');
+        deleteButton.addEventListener('click', () => this.handleDeleteEntry(entry.id));
+
+        return li;
+    }
+
+    handleTimeChange(entryId, element) {
+        const startDate = element.querySelector('input[type="date"]').value;
+        const startTime = element.querySelector('input[type="time"]').value;
+        const endDate = element.querySelectorAll('input[type="date"]')[1].value;
+        const endTime = element.querySelectorAll('input[type="time"]')[1].value;
+
+        const start = new Date(`${startDate}T${startTime}`);
+        const end = new Date(`${endDate}T${endTime}`);
+
+        if (start >= end) {
+            this.showError(this.translator.translate('invalidTimeRange'));
+            this.renderEntries(this.timeEntriesFeature.getCurrentEntries());
+            return;
+        }
+
+        this.timeEntriesFeature.updateEntry(entryId, { start, end });
+    }
+
+    async handleAddEntry(e) {
+        e.preventDefault();
+
+        const startDate = this.elements.addForm.querySelector('#entryStartDate').value;
+        const startTime = this.elements.addForm.querySelector('#entryStartTime').value;
+        const endDate = this.elements.addForm.querySelector('#entryEndDate').value;
+        const endTime = this.elements.addForm.querySelector('#entryEndTime').value;
+        const description = this.elements.addForm.querySelector('#entryDescription').value;
+
         try {
-            await timeEntriesFeature.updateEntry(entryId, {
-                start: new Date(formData.get('start')),
-                end: new Date(formData.get('end')),
-                description: formData.get('description')
+            await this.timeEntriesFeature.addEntry({
+                start: new Date(`${startDate}T${startTime}`),
+                end: new Date(`${endDate}T${endTime}`),
+                description
             });
-            setEditingId(null);
+
+            this.elements.addForm.classList.add('hidden');
+            this.elements.addForm.reset();
         } catch (error) {
-            console.error('Error updating time entry:', error);
+            this.showError(error.message);
         }
-    };
+    }
 
-    // Delete time entry
-    const handleDeleteEntry = async (entryId) => {
-        try {
-            await timeEntriesFeature.deleteEntry(entryId);
-        } catch (error) {
-            console.error('Error deleting time entry:', error);
+    async handleDeleteEntry(entryId) {
+        if (confirm(this.translator.translate('confirmDeleteTimeEntry'))) {
+            try {
+                await this.timeEntriesFeature.deleteEntry(entryId);
+            } catch (error) {
+                this.showError(error.message);
+            }
         }
-    };
+    }
 
-    // Pagination handlers
-    const handlePageChange = (page) => {
-        timeEntriesFeature.setPage(page);
-    };
+    handlePaginationClick(action) {
+        const currentPage = this.timeEntryManager.getCurrentPage();
+        const totalPages = this.timeEntryManager.getTotalPages();
 
-    const handleEntriesPerPageChange = (e) => {
-        const value = parseInt(e.target.value);
-        if (value > 0) {
-            timeEntriesFeature.setEntriesPerPage(value);
+        switch (action) {
+            case 'first':
+                this.timeEntryManager.setPage(1);
+                break;
+            case 'prev':
+                if (currentPage > 1) {
+                    this.timeEntryManager.setPage(currentPage - 1);
+                }
+                break;
+            case 'next':
+                if (currentPage < totalPages) {
+                    this.timeEntryManager.setPage(currentPage + 1);
+                }
+                break;
+            case 'last':
+                this.timeEntryManager.setPage(totalPages);
+                break;
         }
-    };
+    }
 
-    // Sort order handler
-    const handleSortOrderChange = () => {
-        const newOrder = sortOrder === 'newest' ? 'oldest' : 'newest';
-        timeEntriesFeature.setSortOrder(newOrder);
-    };
+    updatePagination() {
+        if (!this.elements.pageInput || !this.elements.totalPages) return;
 
-    // Search handler
-    const handleSearch = (e) => {
-        const term = e.target.value;
-        setSearchTerm(term);
-        timeEntriesFeature.setDescriptionFilter(term);
-    };
+        const currentPage = this.timeEntryManager.getCurrentPage();
+        const totalPages = this.timeEntryManager.getTotalPages();
+        
+        this.elements.pageInput.value = currentPage;
+        this.elements.totalPages.textContent = totalPages;
+        
+        this.updatePaginationButtons();
+    }
 
-    const TimeEntryForm = ({ entry = null, onSubmit }) => {
+    updatePaginationButtons() {
+        if (!this.elements.pagination) return;
+
+        const currentPage = this.timeEntryManager.getCurrentPage();
+        const totalPages = this.timeEntryManager.getTotalPages();
+        
+        const firstButton = this.elements.pagination.querySelector('[data-action="first"]');
+        const prevButton = this.elements.pagination.querySelector('[data-action="prev"]');
+        const nextButton = this.elements.pagination.querySelector('[data-action="next"]');
+        const lastButton = this.elements.pagination.querySelector('[data-action="last"]');
+
+        if (firstButton) firstButton.disabled = currentPage === 1;
+        if (prevButton) prevButton.disabled = currentPage === 1;
+        if (nextButton) nextButton.disabled = currentPage === totalPages;
+        if (lastButton) lastButton.disabled = currentPage === totalPages;
+    }
+
+    updateSortButtonText(order) {
+        this.elements.sortButton.textContent = 
+            this.translator.translate(order === 'newest' ? 'sortNewestFirst' : 'sortOldestFirst');
+    }
+
+    setDefaultFormTimes() {
         const now = new Date();
-        const formattedNow = now.toISOString().slice(0, 16); // YYYY-MM-DDThh:mm
+        const formattedDate = this.formatDate(now);
+        const formattedTime = this.formatTime(now);
 
-        return h('form', {
-            ref: editFormRef,
-            onSubmit: (e) => {
-                e.preventDefault();
-                onSubmit(new FormData(e.target));
-            },
-            className: 'space-y-4 p-4 bg-muted/50 rounded-lg'
-        }, [
-            // Date and time inputs
-            h('div', { className: 'grid grid-cols-2 gap-4' }, [
-                h('div', { className: 'space-y-2' }, [
-                    h('label', { 
-                        className: 'block text-sm font-medium',
-                        htmlFor: 'start'
-                    }, translationManager.translate('start')),
-                    h('input', {
-                        type: 'datetime-local',
-                        id: 'start',
-                        name: 'start',
-                        defaultValue: entry?.start?.slice(0, 16) || formattedNow,
-                        className: 'w-full rounded-md border bg-background px-3 py-2'
-                    })
-                ]),
-                h('div', { className: 'space-y-2' }, [
-                    h('label', { 
-                        className: 'block text-sm font-medium',
-                        htmlFor: 'end'
-                    }, translationManager.translate('end')),
-                    h('input', {
-                        type: 'datetime-local',
-                        id: 'end',
-                        name: 'end',
-                        defaultValue: entry?.end?.slice(0, 16) || formattedNow,
-                        className: 'w-full rounded-md border bg-background px-3 py-2'
-                    })
-                ])
-            ]),
+        this.elements.addForm.querySelector('#entryStartDate').value = formattedDate;
+        this.elements.addForm.querySelector('#entryStartTime').value = formattedTime;
+        this.elements.addForm.querySelector('#entryEndDate').value = formattedDate;
+        this.elements.addForm.querySelector('#entryEndTime').value = formattedTime;
+    }
 
-            // Description input
-            h('div', { className: 'space-y-2' }, [
-                h('label', { 
-                    className: 'block text-sm font-medium',
-                    htmlFor: 'description'
-                }, translationManager.translate('description')),
-                h('input', {
-                    type: 'text',
-                    id: 'description',
-                    name: 'description',
-                    defaultValue: entry?.description || '',
-                    placeholder: translationManager.translate('enterDescription'),
-                    className: 'w-full rounded-md border bg-background px-3 py-2'
-                })
-            ]),
+    setupDragAndDrop() {
+        const timeEntryList = this.elements.entriesList;
+        if (!timeEntryList) return;
 
-            // Form buttons
-            h('div', { className: 'flex justify-end gap-2' }, [
-                h('button', {
-                    type: 'button',
-                    onClick: () => {
-                        setEditingId(null);
-                        setShowAddEntry(false);
-                    },
-                    className: 'px-3 py-2 text-sm rounded-md hover:bg-muted'
-                }, translationManager.translate('cancel')),
-                h('button', {
-                    type: 'submit',
-                    className: 'px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90'
-                }, entry ? translationManager.translate('update') : translationManager.translate('add'))
-            ])
-        ]);
-    };
+        let dragSrcEl = null;
 
-    return h('div', { className: `flex flex-col h-full ${className}` }, [
-        // Header controls
-        h('div', { className: 'flex items-center justify-between gap-4 mb-4 p-2' }, [
-            // Search input
-            h('div', { className: 'flex-1' }, [
-                h('div', { className: 'relative' }, [
-                    h(Search, {
-                        size: 16,
-                        className: 'absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'
-                    }),
-                    h('input', {
-                        type: 'text',
-                        value: searchTerm,
-                        onChange: handleSearch,
-                        placeholder: translationManager.translate('searchEntries'),
-                        className: 'w-full pl-9 pr-3 py-2 rounded-md border bg-background'
-                    })
-                ])
-            ]),
+        // Handle drag start
+        timeEntryList.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('li');
+            if (!item) return;
 
-            // Sort and add buttons
-            h('div', { className: 'flex items-center gap-2' }, [
-                h('button', {
-                    onClick: handleSortOrderChange,
-                    className: 'p-2 hover:bg-muted rounded-md inline-flex items-center gap-2'
-                }, [
-                    h(ArrowUpDown, { size: 16 }),
-                    sortOrder === 'newest' ? 
-                        translationManager.translate('sortNewest') :
-                        translationManager.translate('sortOldest')
-                ]),
-                h('button', {
-                    onClick: () => setShowAddEntry(true),
-                    className: 'p-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 inline-flex items-center gap-2'
-                }, [
-                    h(Plus, { size: 16 }),
-                    translationManager.translate('addEntry')
-                ])
-            ])
-        ]),
+            dragSrcEl = item;
+            e.target.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.entryId);
+        });
 
-        // Add entry form
-        showAddEntry && h(TimeEntryForm, {
-            onSubmit: handleAddEntry
-        }),
+        // Handle drag over
+        timeEntryList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            return false;
+        });
 
-        // Time entries list
-        h('div', { 
-            className: 'flex-1 overflow-y-auto min-h-0',
-            'aria-label': translationManager.translate('timeEntriesList')
-        }, [
-            loading ? h('div', { 
-                className: 'flex items-center justify-center h-full' 
-            }, translationManager.translate('loading')) :
-            
-            error ? h('div', { 
-                className: 'text-destructive p-4 text-center' 
-            }, error) :
-            
-            entries.length === 0 ? h('div', { 
-                className: 'text-muted-foreground p-4 text-center' 
-            }, translationManager.translate('noTimeEntries')) :
-            
-            h('ul', { className: 'space-y-2 p-2' }, entries.map(entry => 
-                h('li', {
-                    key: entry.id,
-                    className: `
-                        relative group p-4 rounded-lg
-                        ${editingId === entry.id ? 'bg-muted' : 'hover:bg-muted/50'}
-                    `
-                }, 
-                    editingId === entry.id ?
-                        h(TimeEntryForm, {
-                            entry,
-                            onSubmit: (formData) => handleUpdateEntry(entry.id, formData)
-                        }) :
-                        [
-                            h('div', { className: 'flex items-center justify-between gap-4' }, [
-                                h('div', { className: 'space-y-1' }, [
-                                    h('div', { className: 'flex items-center gap-2 text-sm' }, [
-                                        h(Calendar, { size: 16 }),
-                                        new Date(entry.start).toLocaleDateString(),
-                                        h(Clock, { size: 16, className: 'ml-2' }),
-                                        `${new Date(entry.start).toLocaleTimeString()} - ${new Date(entry.end).toLocaleTimeString()}`
-                                    ]),
-                                    entry.description && h('p', { 
-                                        className: 'text-muted-foreground' 
-                                    }, entry.description)
-                                ]),
-                                h('div', { 
-                                    className: `
-                                        flex items-center gap-2
-                                        opacity-0 group-hover:opacity-100
-                                        transition-opacity duration-200
-                                    `
-                                }, [
-                                    h('button', {
-                                        onClick: () => setEditingId(entry.id),
-                                        className: 'p-1 hover:bg-muted rounded',
-                                        'aria-label': translationManager.translate('editEntry')
-                                    }, translationManager.translate('edit')),
-                                    h('button', {
-                                        onClick: () => handleDeleteEntry(entry.id),
-                                        className: 'p-1 hover:bg-destructive/10 text-destructive rounded',
-                                        'aria-label': translationManager.translate('deleteEntry')
-                                    }, [
-                                        h(Trash2, { size: 16 })
-                                    ])
-                                ])
-                            ])
-                        ]
-                )
-            ))
-        ]),
+        // Handle drag enter
+        timeEntryList.addEventListener('dragenter', (e) => {
+            const item = e.target.closest('li');
+            if (item && dragSrcEl !== item) {
+                item.classList.add('over');
+            }
+        });
 
-        // Pagination controls
-        h('div', { 
-            className: 'flex items-center justify-between gap-4 mt-4 p-2',
-            'aria-label': translationManager.translate('paginationControls')
-        }, [
-            // Entries per page selector
-            h('div', { className: 'flex items-center gap-2' }, [
-                h('span', { className: 'text-sm' }, 
-                    translationManager.translate('entriesPerPage')
-                ),
-                h('select', {
-                    value: entriesPerPage,
-                    onChange: handleEntriesPerPageChange,
-                    className: 'rounded-md border bg-background px-2 py-1'
-                }, [5, 10, 20, 30, 50].map(value =>
-                    h('option', { key: value, value }, value)
-                ))
-            ]),
+        // Handle drag leave
+        timeEntryList.addEventListener('dragleave', (e) => {
+            const item = e.target.closest('li');
+            if (item) {
+                item.classList.remove('over');
+            }
+        });
 
-            // Page navigation
-            h('div', { className: 'flex items-center gap-2' }, [
-                // First page button
-                h('button', {
-                    onClick: () => handlePageChange(1),
-                    disabled: currentPage === 1,
-                    className: 'p-1 hover:bg-muted rounded disabled:opacity-50',
-                    'aria-label': translationManager.translate('firstPage')
-                }, [
-                    h(ChevronsLeft, { size: 16 })
-                ]),
+        // Handle drop
+        timeEntryList.addEventListener('drop', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
 
-                // Previous page button
-                h('button', {
-                    onClick: () => handlePageChange(currentPage - 1),
-                    disabled: currentPage === 1,
-                    className: 'p-1 hover:bg-muted rounded disabled:opacity-50',
-                    'aria-label': translationManager.translate('previousPage')
-                }, [
-                    h(ChevronLeft, { size: 16 })
-                ]),
+            const dropTarget = e.target.closest('li');
+            if (!dropTarget || !dragSrcEl || dropTarget === dragSrcEl) return;
 
-                // Page number input/display
-                h('div', { className: 'flex items-center gap-1' }, [
-                    h('input', {
-                        type: 'number',
-                        min: 1,
-                        max: totalPages,
-                        value: currentPage,
-                        onChange: (e) => {
-                            const page = parseInt(e.target.value);
-                            if (page >= 1 && page <= totalPages) {
-                                handlePageChange(page);
-                            }
-                        },
-                        className: 'w-12 text-center rounded-md border bg-background px-1 py-1'
-                    }),
-                    h('span', { className: 'text-sm text-muted-foreground' },
-                        `/ ${totalPages}`
-                    )
-                ]),
+            const items = Array.from(timeEntryList.children);
+            const fromIndex = items.indexOf(dragSrcEl);
+            const toIndex = items.indexOf(dropTarget);
 
-                // Next page button
-                h('button', {
-                    onClick: () => handlePageChange(currentPage + 1),
-                    disabled: currentPage === totalPages,
-                    className: 'p-1 hover:bg-muted rounded disabled:opacity-50',
-                    'aria-label': translationManager.translate('nextPage')
-                }, [
-                    h(ChevronRight, { size: 16 })
-                ]),
+            try {
+                // Update entry order through feature
+                await this.timeEntriesFeature.updateEntryOrder(
+                    dragSrcEl.dataset.entryId,
+                    fromIndex,
+                    toIndex
+                );
+            } catch (error) {
+                this.showError(error.message);
+            }
 
-                // Last page button
-                h('button', {
-                    onClick: () => handlePageChange(totalPages),
-                    disabled: currentPage === totalPages,
-                    className: 'p-1 hover:bg-muted rounded disabled:opacity-50',
-                    'aria-label': translationManager.translate('lastPage')
-                }, [
-                    h(ChevronsRight, { size: 16 })
-                ])
-            ])
-        ]),
+            return false;
+        });
 
-        // Statistics summary
-        h('div', { 
-            className: 'mt-4 p-2 bg-muted/50 rounded-lg text-sm',
-            role: 'status',
-            'aria-label': translationManager.translate('statisticsSummary')
-        }, [
-            h('div', { className: 'flex justify-between items-center' }, [
-                h('span', {}, [
-                    translationManager.translate('totalEntries'),
-                    ': ',
-                    entries.length
-                ]),
-                h('span', {}, [
-                    translationManager.translate('totalTime'),
-                    ': ',
-                    timeEntriesFeature.getStatistics().totalDuration
-                ])
-            ])
-        ])
-    ]);
-};
+        // Handle drag end
+        timeEntryList.addEventListener('dragend', (e) => {
+            e.target.style.opacity = '1';
+            timeEntryList.querySelectorAll('li').forEach(item => {
+                item.classList.remove('over');
+            });
+            dragSrcEl = null;
+        });
+    }
+
+    // Utility methods
+    formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    formatTime(date) {
+        return date.toTimeString().slice(0, 5);
+    }
+
+    formatDuration(ms) {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    showError(message) {
+        this.elements.errorMessage.textContent = message;
+        this.elements.errorMessage.classList.remove('hidden');
+        
+        setTimeout(() => {
+            this.elements.errorMessage.classList.add('hidden');
+        }, 5000);
+    }
+
+    destroy() {
+        // Clean up event listeners
+        // State manager unsubscribe would be handled here if implemented
+    }
+
+    updateTranslations() {
+        // Update all text content with data-i18n attributes
+        this.container.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = this.translator.translate(key);
+        });
+
+        // Update placeholders
+        this.container.querySelectorAll('.description-input').forEach(input => {
+            input.placeholder = this.translator.translate('enterDescription');
+        });
+
+        // Update sort button
+        this.updateSortButtonText(this.timeEntriesFeature.getSortOrder());
+
+        // Update aria labels
+        this.container.querySelectorAll('.delete-button').forEach(button => {
+            button.setAttribute('aria-label', this.translator.translate('deleteEntry'));
+        });
+
+        // Update pagination aria labels
+        const paginationButtons = {
+            first: 'firstPage',
+            prev: 'previousPage',
+            next: 'nextPage',
+            last: 'lastPage'
+        };
+
+        Object.entries(paginationButtons).forEach(([action, translationKey]) => {
+            const button = this.elements.pagination.querySelector(`[data-action="${action}"]`);
+            if (button) {
+                button.setAttribute('aria-label', this.translator.translate(translationKey));
+            }
+        });
+    }
+}

@@ -1,0 +1,93 @@
+/* src/styles/core/variables.css */
+:root {
+  /* Primary colors */
+  --color-primary: #007bff;
+  --color-primary-dark: #0056b3;
+  --color-primary-light: #e6f2ff;
+
+  /* Secondary colors */
+  --color-secondary: #4CAF50;
+  --color-secondary-dark: #45a049;
+
+  /* Accent colors */
+  --color-accent: #0799c5;
+  --color-accent-light: #66d3f4;
+
+  /* Background colors */
+  --color-background-main: #f4f4f4;
+  --color-background-card: #fff;
+  --color-background-alt: #f8f8f8;
+
+  /* Text colors */
+  --color-text-primary: #333;
+  --color-text-secondary: #555;
+  --color-text-tertiary: #666;
+
+  /* Border colors */
+  --color-border: #ddd;
+
+  /* Button colors */
+  --color-button-danger: #e74c3c;
+  --color-button-danger-dark: #c0392b;
+  --color-button-clear: #7B0323;
+  --color-button-clear-dark: #5E0219;
+
+  /* State colors */
+  --color-hover: #f0f0f0;
+  --color-active: #e0e0e0;
+
+  /* Chart colors */
+  --color-chart-bar: rgba(75, 192, 192, 0.6);
+  --color-chart-border: rgba(75, 192, 192, 1);
+
+  /* Miscellaneous */
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-modal-overlay: rgba(0,0,0,0.4);
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+  /* Primary colors */
+  --color-primary: #4dabf7;
+  --color-primary-dark: #339af0;
+  --color-primary-light: #1c7ed6;
+
+  /* Secondary colors */
+  --color-secondary: #69db7c;
+  --color-secondary-dark: #51cf66;
+
+  /* Accent colors */
+  --color-accent: #3bc9db;
+  --color-accent-light: #66d9e8;
+
+  /* Background colors */
+  --color-background-main: #121212;
+  --color-background-card: #1e1e1e;
+  --color-background-alt: #2c2c2c;
+
+  /* Text colors */
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary: #808080;
+
+  /* Border colors */
+  --color-border: #333;
+
+  /* Button colors */
+  --color-button-danger: #ff6b6b;
+  --color-button-danger-dark: #f03e3e;
+  --color-button-clear: #ffa8a8;
+  --color-button-clear-dark: #ff8787;
+
+  /* State colors */
+  --color-hover: #2a2a2a;
+  --color-active: #3a3a3a;
+
+  /* Chart colors */
+  --color-chart-bar: rgba(100, 255, 218, 0.6);
+  --color-chart-border: rgba(100, 255, 218, 1);
+
+  /* Miscellaneous */
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-modal-overlay: rgba(0,0,0,0.7);
+}
