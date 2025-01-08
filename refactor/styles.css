@@ -1,0 +1,13 @@
+/* Import core styles */
+@import 'styles/core/variables.css';
+@import 'styles/core/reset.css';
+@import 'styles/core/layout.css';
+
+/* Import component styles */
+@import 'styles/components/timer.css';
+@import 'styles/components/projects.css';
+@import 'styles/components/timeEntries.css';
+/* ... other component styles */
+
+/* Import utilities */
+@import 'styles/utilities.css';

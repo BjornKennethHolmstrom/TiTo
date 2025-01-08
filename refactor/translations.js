@@ -1,4 +1,4 @@
-const translations = {
+window.translations = {
     en: {
         appTitle: "TiTo Time Tracker",
         subtitle: "TiTo Time Tracker Tool",

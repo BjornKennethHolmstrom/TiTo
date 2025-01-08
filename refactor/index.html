@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TiTo Time Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container" role="main">
+        <div class="column" role="region" aria-label="Project Management">
+            <div class="title-container">
+                <img src="icons/logo-icon.png" class="logo-icon" style="width: 5em; height: 5em;" alt="TiTo logo">
+                <span class="subtitle" i18n="subtitle">TiTo Time Tracker Tool</span>
+
+                <h1>
+                    <span class="info-icon" role="button" aria-label="More information" tabindex="0">ℹ️</span>
+                    <span class="help-icon" role="button" aria-label="Help" tabindex="0">❓</span>
+                </h1>
+            </div>
+
+            <div class="settings-container">
+                <div class="theme-switcher"></div>
+                <div class="language-switcher"></div>
+            </div>
+
+            <div id="timerDisplay" class="timer-section"></div>
+
+            <div id="projectManagement" class="project-section"></div>
+
+            <div class="database-controls">
+                <button id="exportDatabaseButton">Export Database</button>
+                <button id="importDatabaseButton">Import Database</button>
+                <button id="clearDatabaseButton">Clear Database</button>
+            </div>
+        </div>
+
+        <div class="column" role="region" aria-label="Time Entries">
+            <div id="timeEntries" class="time-entries-section"></div>
+        </div>
+
+        <div class="column" role="region" aria-label="Analysis">
+            <div class="tabs" role="tablist">
+                <button class="tab" role="tab" aria-selected="true" aria-controls="overallTimeSection" i18n="overallTime">Overall Time</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="timeRangeSection" i18n="timeRange">Time Range</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="reportsSection" i18n="reports">Reports</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="goalsSection" i18n="goals">Goals</button>
+            </div>
+
+            <div class="chart-and-report-container">
+                <div id="overallTimeSection" class="tab-section active" role="tabpanel" aria-labelledby="overallTimeTab">
+                    <h3 id="overall-time-spent-on-projects" i18n="overallTimeSpentOnProjects">
+                        Overall Time Spent on Projects
+                    </h3>
+                </div>
+
+                <div id="timeRangeSection" class="tab-section" role="tabpanel" aria-labelledby="timeRangeTab" hidden>
+                    <h3 id="time-spent-in-selected-range" i18n="timeSpentInSelectedRange">
+                        Time Spent in Selected Range
+                    </h3>
+                    <div class="date-range-selector"></div>
+                    <div class="time-range-charts"></div>
+                </div>
+
+                <div id="reportsSection" class="tab-section" role="tabpanel" aria-labelledby="reportsTab" hidden>
+                    <div id="reports" class="reports-section"></div>
+                </div>
+
+                <div id="goalsSection" class="tab-section" role="tabpanel" aria-labelledby="goalsTab" hidden>
+                    <div id="goals" class="goals-section"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-content">
+            <button class="close" aria-label="Close">&times;</button>
+            <h2 id="modal-title" i18n="aboutTiTo">About TiTo</h2>
+            <p>Version: 1.10.0</p>
+            <div class="footer-links">
+                <a href="https://bjornkennethholmstrom.wordpress.com/tito/" class="footer-link" target="_blank" i18n="learnMore">Learn more about TiTo</a>
+                <a href="https://bjornkennethholmstrom.wordpress.com/contact/" class="footer-link" target="_blank" i18n="shareFeedback">Share your feedback</a>
+                <a href="https://bjornkennethholmstrom.wordpress.com/support/" class="footer-link" target="_blank" i18n="supportTiTo">Support TiTo with a donation</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal" role="dialog" aria-labelledby="help-modal-title" aria-hidden="true">
+        <div class="modal-content">
+            <button class="close" aria-label="Close">&times;</button>
+            <h2 id="help-modal-title" i18n="helpTitle">How to Use TiTo Time Tracker</h2>
+            <div id="helpContent" tabindex="0"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Core Services -->
+    <script src="src/core/state.js"></script>
+    <script src="src/core/database.js"></script>
+    <script src="translations.js"></script>
+    <script src="src/core/translationManager.js"></script>
+    <script src="src/core/projectManager.js"></script>
+    <script src="src/core/timeEntryManager.js"></script>
+
+    <!-- Features -->
+    <script src="src/features/timer.js"></script>
+    <script src="src/features/themes.js"></script>
+    <script src="src/features/goals.js"></script>
+    <script src="src/features/settings.js"></script>
+    <script src="src/features/reports.js"></script>
+
+    <!-- Components -->
+    <script src="src/ui/components/TimerDisplay/index.js"></script>
+    <script src="src/ui/components/ProjectList/index.js"></script>
+    <script src="src/ui/components/TimeEntries/index.js"></script>
+    <script src="src/ui/components/Reports/index.js"></script>
+    <script src="src/ui/components/Goals/index.js"></script>
+    <script src="src/ui/components/ThemeSwitcher/index.js"></script>
+    <script src="src/ui/components/LanguageSwitcher/index.js"></script>
+
+    <!-- Main Application -->
+    <script src="src/main.js"></script>
+</body>
+</html>
