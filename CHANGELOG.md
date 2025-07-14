@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## Tito 1.11.0
+
+### Features added
+- Added daily report functionality to complement existing weekly and monthly reports
+- Implemented intelligent default date ranges for all report types:
+  - Daily reports default to current day (today to today)
+  - Weekly reports default to current week (last Sunday to today)
+  - Monthly reports default to current month (1st of month to today)
+- Enhanced report workflow for easier daily time logging and export
+
+### User Interface Improvements
+- Report type dropdown now automatically sets appropriate date ranges when selection changes
+- Streamlined daily reporting workflow: select "Daily Summary" → generate → export
+- Improved user experience for daily time tracking and log file maintenance
+
 ## Tito 1.10.0
 
 ### Features added
@@ -193,5 +208,3 @@
 
 7. Performance and Reliability:
    - Ensured proper initialization of the IndexedDB database.
-
-

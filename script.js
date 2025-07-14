@@ -2622,10 +2622,18 @@ function initializeReportFeature() {
         return;
     }
 
-    // Set default dates
+    // Set default dates for monthly report (existing behavior)
     const today = new Date();
     endDate.value = formatDate(today);
     startDate.value = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+
+    // Add event listener for report type changes
+    reportType.addEventListener('change', function() {
+        setDefaultDateRangeForReportType(this.value);
+    });
+
+    // Set default for the initially selected report type
+    setDefaultDateRangeForReportType(reportType.value);
 
     log(LogLevel.DEBUG,"Populating project selection");
     populateProjectSelection().then(() => {
@@ -2657,6 +2665,54 @@ function initializeReportFeature() {
     });
     
     log(LogLevel.DEBUG,"Report feature initialization complete");
+}
+
+function setDefaultDateRangeForReportType(reportType) {
+    const startDateInput = document.getElementById('reportStartDate');
+    const endDateInput = document.getElementById('reportEndDate');
+    
+    if (!startDateInput || !endDateInput) {
+        log(LogLevel.ERROR, 'Report date inputs not found');
+        return;
+    }
+
+    const today = new Date();
+    let startDate = new Date(today);
+    let endDate = new Date(today);
+
+    switch(reportType) {
+        case 'daily':
+            // Today: same day for both start and end
+            startDate = new Date(today);
+            endDate = new Date(today);
+            break;
+            
+        case 'weekly':
+            // This week: from last Sunday to today
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - today.getDay()); // Last Sunday
+            endDate = new Date(today);
+            break;
+            
+        case 'monthly':
+            // This month: from 1st of current month to today
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = new Date(today);
+            break;
+            
+        default:
+            // Default to today
+            startDate = new Date(today);
+            endDate = new Date(today);
+    }
+
+    startDateInput.value = formatDate(startDate);
+    endDateInput.value = formatDate(endDate);
+    
+    log(LogLevel.INFO, `Set date range for ${reportType} report:`, {
+        start: startDateInput.value,
+        end: endDateInput.value
+    });
 }
 
 function isValidDate(dateString) {
@@ -2925,7 +2981,9 @@ function generateReport(selectedColumns) {
             }
 
             let report;
-            if (reportType === 'weekly') {
+            if (reportType === 'daily') {
+                report = generateDailyReport(filteredEntries, startDate, endDate);
+            } else if (reportType === 'weekly') {
                 report = generateWeeklyReport(filteredEntries, startDate, endDate);
             } else {
                 report = generateMonthlyReport(filteredEntries, startDate, endDate);
@@ -2983,6 +3041,47 @@ function generateWeeklyReport(entries, startDate, endDate) {
         };
 
         currentDate.setDate(currentDate.getDate() + 7); // Move to next week
+    }
+
+    return report;
+}
+
+function generateDailyReport(entries, startDate, endDate) {
+    let report = {};
+    let currentDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Ensure endDate is set to the end of the day
+    endDate.setHours(23, 59, 59, 999);
+
+    while (currentDate <= endDate) {
+        let dayStart = new Date(currentDate);
+        dayStart.setHours(0, 0, 0, 0);
+        let dayEnd = new Date(currentDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        let dayEntries = entries.filter(entry => {
+            let entryStart = new Date(entry.start);
+            let entryEnd = new Date(entry.end);
+            return (
+                (entryStart >= dayStart && entryStart <= dayEnd) ||
+                (entryEnd >= dayStart && entryEnd <= dayEnd) ||
+                (entryStart <= dayStart && entryEnd >= dayEnd)
+            );
+        });
+
+        let dayTotal = dayEntries.reduce((total, entry) => {
+            return total + entry.duration;
+        }, 0);
+
+        let dayKey = formatDate(currentDate);
+
+        report[dayKey] = {
+            total: dayTotal,
+            entries: dayEntries
+        };
+
+        currentDate.setDate(currentDate.getDate() + 1); // Move to next day
     }
 
     return report;
