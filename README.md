@@ -58,6 +58,10 @@ TiTo Time Tracker is a simple, efficient web application for tracking time spent
 4. Open the extracted folder and find the `index.html` file
 5. Double-click on `index.html` to open it in your default web browser
 
+OR
+
+Use the [version hosted on GitHub pages](https://bjornkennethholmstrom.github.io/TiTo/)
+
 ### Recommended: Create a Bookmark
 
 For quick and easy access to TiTo Time Tracker, create a bookmark in your browser:
@@ -145,74 +149,21 @@ Accessing App Information:
 
 # File and folder structure
 
-TiTo
+bjorn@bjorn-home-desktop:~/Code/TiTo$ tree
+.
 ├── CHANGELOG.md
 ├── icons
+│   └── ...
 ├── index.html
-├── legacy
-│   ├── icons
-│   ├── index.html
-│   ├── script.js
-│   ├── styles.css
-│   └── translations.js
 ├── LICENSE
-├── package.json
 ├── README.md
-├── rollup.config.js
-├── src
-│   ├── core
-│   │   ├── database.js
-│   │   ├── projectManager.js
-│   │   ├── state.js
-│   │   ├── timeEntryManager.js
-│   │   └── translationManager.js
-│   ├── features
-│   │   ├── goals.js
-│   │   ├── projects.js
-│   │   ├── reports.js
-│   │   ├── settings.js
-│   │   ├── themes.js
-│   │   └── timer.js
-│   ├── main.js
-│   ├── ui
-│   │   └── components
-│   │       ├── Goals
-│   │       │   └── index.js
-│   │       ├── LanguageSwitcher
-│   │       │   └── index.js
-│   │       ├── ProjectList
-│   │       │   └── index.js
-│   │       ├── Reports
-│   │       │   └── index.js
-│   │       ├── Settings
-│   │       │   └── index.js
-│   │       ├── ThemeSwitcher
-│   │       │   └── index.js
-│   │       ├── TimeEntries
-│   │       │   └── index.js
-│   │       ├── TimerDisplay
-│   │       │   └── index.js
-│   │       └── timerDisplay.js
-│   └── utils
-├── styles
-│   ├── components
-│   │   ├── goals.css
-│   │   ├── languageSwitcher.css
-│   │   ├── projects.css
-│   │   ├── reports.css
-│   │   ├── settings.css
-│   │   ├── themeSwitcher.css
-│   │   ├── timeEntries.css
-│   │   └── timer.css
-│   ├── core
-│   │   ├── layout.css
-│   │   ├── reset.css
-│   │   └── variables.css
-│   └── utilities.css
+├── refactor
+│   ├── ...
+│   ...
+│   └── ...
+├── script.js
 ├── styles.css
-├── tito-sample-database.json
 └── translations.js
-
 
 
 ## License
